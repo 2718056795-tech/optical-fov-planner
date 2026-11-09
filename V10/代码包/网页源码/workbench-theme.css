@@ -1,0 +1,228 @@
+/* V10 desktop styling. Apply to the application shell and controls, not SVG plots. */
+:root {
+  --workbench-bg: #f4f5f8;
+  --workbench-sidebar: #eeeff3;
+  --workbench-surface: #fff;
+  --workbench-divider: #dcdfe6;
+  --workbench-quiet-divider: #e7e9ee;
+  --workbench-text: #202127;
+  --workbench-secondary: #5c606b;
+  --workbench-accent: #007aff;
+  --workbench-control-radius: 7px;
+  --workbench-panel-radius: 12px;
+  --workbench-control-height: 30px;
+  --workbench-gap: 12px;
+  --workbench-sidebar-width: clamp(280px, 24vw, 370px);
+}
+
+body { background: var(--workbench-bg); }
+body header.fov-toolbar {
+  display: grid;
+  grid-template-columns: 208px auto minmax(0, 1fr);
+  align-items: center;
+  min-height: 60px;
+  padding: 10px 16px;
+  gap: 6px 14px;
+  color: var(--workbench-text);
+  background: var(--workbench-bg);
+  border-bottom: 1px solid var(--workbench-divider);
+  backdrop-filter: none;
+  position: relative;
+  z-index: 2;
+}
+.fov-toolbar > div { min-width: 0; }
+.fov-toolbar .brand, .fov-toolbar p { display: none; }
+.fov-toolbar h1 { margin: 0; font-size: 20px; font-weight: 650; line-height: 26px; letter-spacing: -.35px; }
+.fov-toolbar .product-selector {
+  margin: 0;
+  padding: 2px;
+  gap: 2px;
+  flex-wrap: nowrap;
+  border: 1px solid var(--workbench-quiet-divider);
+  border-radius: 9px;
+  background: #e7e8ee;
+}
+.fov-toolbar .product-selector button {
+  flex: 1 0 auto;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  line-height: 17px;
+  white-space: nowrap;
+  color: var(--workbench-secondary);
+}
+.fov-toolbar .product-selector button[aria-pressed="true"] { color: var(--workbench-text); }
+.header-toolbar-slot { position: relative; min-width: 0; width: 100%; }
+.header-toolbar-slot > .actions {
+  width: 100%;
+  margin: 0;
+  gap: 5px;
+  align-items: center;
+  justify-content: flex-end;
+}
+.fov-toolbar .v10-history { gap: 5px; flex-wrap: nowrap; }
+.line-mode header .structured-actions { display: none !important; }
+header.toolbar-measuring .header-toolbar-slot > .actions {
+  display: flex !important;
+  position: absolute;
+  top: 0;
+  left: 0;
+  visibility: hidden !important;
+}
+.fov-toolbar .actions button, .fov-toolbar .filelabel, .toolbar-more > summary {
+  height: var(--workbench-control-height);
+  padding: 0 9px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+  font-size: 12px;
+  border: 1px solid var(--workbench-divider);
+  border-radius: var(--workbench-control-radius);
+  background: var(--workbench-surface);
+  color: var(--workbench-text);
+}
+.fov-toolbar .actions button:not(:disabled):hover, .fov-toolbar .filelabel:hover, .toolbar-more > summary:hover {
+  background: #ebedf2;
+  box-shadow: none;
+}
+.fov-toolbar .actions :is(#save, #lineSave) {
+  color: white;
+  background: var(--workbench-accent);
+  border-color: var(--workbench-accent);
+}
+.fov-toolbar .actions :is(#save, #lineSave):hover { background: #0069df; }
+.fov-toolbar .filelabel:focus-visible, .toolbar-more > summary:focus-visible { outline: 2px solid var(--workbench-accent); outline-offset: 1px; }
+.toolbar-export-group { display: inline-flex; align-items: center; }
+.fov-toolbar .toolbar-export-group > button { border-radius: var(--workbench-control-radius) 0 0 var(--workbench-control-radius); }
+.fov-toolbar .toolbar-export-group :is(#imageFormat, #lineFormat) {
+  width: 91px;
+  height: var(--workbench-control-height);
+  margin: 0;
+  padding: 0 16px 0 6px;
+  border: 1px solid var(--workbench-divider);
+  border-left: 0;
+  border-radius: 0 var(--workbench-control-radius) var(--workbench-control-radius) 0;
+  font-size: 11px;
+  background-color: var(--workbench-surface);
+  background-position: calc(100% - 10px) 50%, calc(100% - 6px) 50%;
+}
+/* Keep the current format visible as a compact BMP/SVG selector. */
+.toolbar-more { position: relative; margin: 0; }
+.toolbar-more > summary { width: 32px; padding: 0; font-size: 19px; line-height: 1; }
+.toolbar-more > summary::-webkit-details-marker { display: none; }
+.toolbar-more[open] > summary { background: #e7e8ee; }
+.toolbar-more-items {
+  position: absolute;
+  inset: calc(100% + 5px) 0 auto auto;
+  z-index: 1;
+  display: grid;
+  min-width: 132px;
+  padding: 4px;
+  gap: 2px;
+  background: var(--workbench-surface);
+  border: 1px solid var(--workbench-divider);
+  border-radius: 9px;
+  box-shadow: 0 4px 14px #2021271a;
+}
+.fov-toolbar .toolbar-more-items > button { justify-content: flex-start; border: 0; padding-inline: 8px; }
+.fov-toolbar #toast {
+  position: absolute;
+  inset: calc(100% + 10px) 20px auto auto;
+  max-width: min(34vw, 440px);
+  margin: 0;
+  line-height: 18px;
+  font-size: 11px;
+  color: var(--workbench-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+}
+.fov-toolbar #toast:empty { display: none; }
+body:has(.fov-toolbar #toast:not(:empty)) #structuredMain .content > #modelInfo,
+body:has(.fov-toolbar #toast:not(:empty)) #lineMain .content > #lineStatus:not(.bad) { padding-inline-end: min(35vw, 450px); }
+
+#structuredMain, #lineMain { gap: var(--workbench-gap); }
+:is(#structuredMain, #lineMain) .content .panel, #structuredMain .stat {
+  border-color: var(--workbench-divider);
+  border-radius: var(--workbench-panel-radius);
+  box-shadow: none;
+}
+:is(#structuredMain, #lineMain) .content .phead { border-color: var(--workbench-quiet-divider); }
+:is(#structuredMain, #lineMain) > .parameter-grid {
+  gap: 0;
+  background: var(--workbench-sidebar);
+}
+:is(#structuredMain, #lineMain) > .parameter-grid > .panel {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+:is(#structuredMain, #lineMain) > .parameter-grid > .panel:not([hidden]) ~ .panel { border-top: 1px solid var(--workbench-divider); }
+:is(#structuredMain, #lineMain) .parameter-grid .phead {
+  min-height: 38px;
+  padding: 7px 14px 4px;
+  border: 0;
+  gap: 6px;
+  flex-wrap: nowrap;
+}
+:is(#structuredMain, #lineMain) .parameter-grid .phead h2 { color: var(--workbench-text); font-size: 14px; white-space: nowrap; }
+:is(#structuredMain, #lineMain) .parameter-grid .phead > .small {
+  min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+#structuredMain .parameter-grid .device-title { border: 0; padding-left: 0; }
+:is(#structuredMain, #lineMain) .parameter-grid .body { padding: 3px 14px 12px; }
+:is(#structuredMain, #lineMain) .parameter-grid label { color: var(--workbench-secondary); line-height: 15px; }
+:is(#structuredMain, #lineMain) .parameter-grid :is(input, select) {
+  height: var(--workbench-control-height);
+  background-color: #fafafd;
+  border-color: #d6d9e2;
+  border-radius: var(--workbench-control-radius);
+}
+:is(#structuredMain, #lineMain) .parameter-grid input[readonly] { background: #e8eaf0; color: var(--workbench-secondary); }
+:is(#structuredMain, #lineMain) .parameter-grid :is(input, select):focus {
+  background-color: var(--workbench-surface);
+  border-color: var(--workbench-accent);
+}
+:is(#structuredMain, #lineMain) .parameter-grid button:not(.parameter-help-trigger) {
+  border: 1px solid var(--workbench-divider);
+  border-radius: var(--workbench-control-radius);
+  background: var(--workbench-surface);
+  color: var(--workbench-secondary);
+}
+:is(#structuredMain, #lineMain) .parameter-grid button:not(.parameter-help-trigger):hover { background: #e7e9f0; }
+:is(#structuredMain, #lineMain) .parameter-grid .parameter-notes { border-color: var(--workbench-divider); color: var(--workbench-secondary); }
+
+@media (min-width: 761px) {
+  #structuredMain, #lineMain {
+    grid-template-columns: var(--workbench-sidebar-width) minmax(0, 1fr);
+    padding: 0 12px 0 0;
+  }
+  :is(#structuredMain, #lineMain) > .parameter-grid { border-right: 1px solid var(--workbench-divider); }
+  :is(#structuredMain, #lineMain) > .content { padding-top: 10px; padding-bottom: 12px; }
+}
+@media (min-width: 761px) and (max-width: 1000px) { :root { --workbench-sidebar-width: 260px; } }
+@media (max-width: 940px) {
+  body header.fov-toolbar { grid-template-columns: 208px minmax(0, 1fr); }
+  .fov-toolbar > div:last-child { grid-column: 1 / -1; }
+}
+@media (max-width: 760px) {
+  #structuredMain, #lineMain { padding: 10px; }
+  .fov-toolbar .actions { justify-content: flex-start; }
+  .fov-toolbar #toast { inset-block-start: calc(100% + 8px); max-width: 46vw; inset-inline-end: 13px; }
+  body:has(.fov-toolbar #toast:not(:empty)) #structuredMain .content > #modelInfo,
+  body:has(.fov-toolbar #toast:not(:empty)) #lineMain .content > #lineStatus:not(.bad) { padding-inline-end: 48vw; }
+  :is(#structuredMain, #lineMain) > .parameter-grid { border: 1px solid var(--workbench-divider); border-radius: var(--workbench-panel-radius); }
+}
+@media (max-width: 500px) {
+  body header.fov-toolbar { grid-template-columns: minmax(0, 1fr); padding: 8px 10px; gap: 7px; }
+  .fov-toolbar h1 { font-size: 18px; line-height: 23px; }
+  .toolbar-more-items { max-width: calc(100vw - 20px); }
+}
+@media print {
+  body header.fov-toolbar { display: block; min-height: 0; padding: 0 0 10px; color: #000; background: white; }
+  .fov-toolbar p { display: block; }
+  .fov-toolbar .header-toolbar-slot, .fov-toolbar #toast, .fov-toolbar .product-selector { display: none !important; }
+}
