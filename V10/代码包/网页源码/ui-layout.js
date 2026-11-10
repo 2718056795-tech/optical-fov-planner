@@ -25,7 +25,7 @@ for(const panel of plots.children){
  const caption=panel.querySelector(':scope>.caption');if(caption){const help=document.createElement('details');help.className='diagram-help';const summary=document.createElement('summary');summary.textContent='图示说明';help.append(summary,caption);panel.append(help);}
 }
 // Readable display values do not round the underlying parameter or export data.
-function inputValue(e){if(e.id==='otherWD')return FOV.workingDistance(state);return get(state,e.dataset.path);}
+function inputValue(e){if(e.id==='otherWD')return FOV.nominalDistance(state);return get(state,e.dataset.path);}
 main.addEventListener('focusin',e=>{const n=e.target;if(!n.matches('input[type="number"]')||n.readOnly||n.dataset.path?.includes('.dof.')||(!n.dataset.path&&n.id!=='otherWD'))return;const v=inputValue(n);if(Number.isFinite(v))n.value=String(v);});
 main.addEventListener('focusout',e=>{const n=e.target;if(!n.matches('input[type="number"]')||n.readOnly||n.dataset.path?.includes('.dof.')||(!n.dataset.path&&n.id!=='otherWD'))return;n.value=displayNumber(inputValue(n),n.dataset.path||'');});
 // Match the full illustration cards across product lines; keep measurements below them.

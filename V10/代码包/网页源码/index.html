@@ -144,12 +144,12 @@ input,select{border:1px solid #e9e9ef;border-radius:11px;background:#f5f5f9;colo
 <legend>工作距离 · 沿相机光轴 (mm)</legend>
 <div class="depth-distance-grid">
 <label>近端<input id="nearWD" type="number" min="0.000001" step="any" placeholder="可选" aria-describedby="depthError"></label>
-<label id="workingDistanceField">中间<input id="otherWD" type="number" min="0.000001" step="any" aria-describedby="depthError"></label>
+<label id="workingDistanceField">名义 WD<input id="otherWD" type="number" min="0.000001" step="any" aria-describedby="depthError"></label>
 <label>远端<input id="farWD" type="number" min="0.000001" step="any" placeholder="可选" aria-describedby="depthError"></label>
 </div>
 <p class="depth-input-error" id="depthError" role="status" hidden></p>
 </fieldset>
-</div><details class="param-help"><summary>距离与角度说明</summary><p class="small" id="baselineInfo"></p><p class="small">X 基线为光机相对相机的水平距离；Z 高度差默认 0，正值表示光机高于相机。Y 固定为 0。光机工作距离由相机距离与 Z 高度差联动计算。相机 WD 从镜头前端计量；光机 WD 从等效投影光心计量。参考平面 Z=0。双目时光机 X=0，左相机在负 X、右相机在正 X；两侧 Z 正值表示相机高于光机。两种模式独立记忆参数。正倾角朝 +X，负倾角朝 −X。中间、近端与远端工作距离均从镜头前端沿相机光轴计量，双目时以左相机为准。近端与远端可选，光机距离随所选平面联动。</p><p class="small" id="distanceHint"></p><div class="caption" id="workingInfo"></div></details></div></section>
+</div><details class="param-help"><summary>距离与角度说明</summary><p class="small" id="baselineInfo"></p><p class="small">X 基线为光机相对相机的水平距离；Z 高度差默认 0，正值表示光机高于相机。Y 固定为 0。光机工作距离由相机距离与 Z 高度差联动计算。相机 WD 从镜头前端计量；光机 WD 从等效投影光心计量。参考平面 Z=0。双目时光机 X=0，左相机在负 X、右相机在正 X；两侧 Z 正值表示相机高于光机。两种模式独立记忆参数。正倾角朝 +X，负倾角朝 −X。名义工作平面为 Z=0，其 WD 与相机参考 WD 联动。近端、名义和远端 WD 均从镜头前端沿光轴计量，双目时以左相机为准。近端与远端可选，光机距离随所选平面联动。</p><p class="small" id="distanceHint"></p><div class="caption" id="workingInfo"></div></details></div></section>
 <section class="panel camera-panel"><div class="phead"><h2 class="device-title" id="cameraTitle">2D 相机</h2><span class="small">蓝色视野</span></div><div class="body" id="cameraFields"></div></section>
 <section class="panel camera-panel stereo-only" id="rightCameraPanel" hidden><div class="phead"><h2 class="device-title right-title">右相机</h2><button id="copyLeftCamera" type="button">复制左相机 · 倾角镜像</button></div><div class="body" id="cameraFields2"></div><div class="caption">右相机参考距离按左相机参考距离、两侧高度差和右侧倾角联动。</div></section><section class="panel projector-panel"><div class="phead"><h2 class="device-title projector-title">光机 / 投影器</h2><span class="small">橙色视野</span></div><div class="body" id="projectorFields"></div></section>
 
@@ -162,10 +162,10 @@ input,select{border:1px solid #e9e9ef;border-radius:11px;background:#f5f5f9;colo
 <div class="plots">
 <section class="panel output-panel layout-panel"><div class="phead"><h2>光学系统布局</h2><div class="tabs"><button id="view3d" class="active">空间示意</button><button id="viewSide">侧视 X–Z</button><button class="plot-export" data-export-plot="layout" data-title="光学系统布局">导出此图</button></div></div><svg id="layout" class="plot" role="img" aria-label="光机与相机布局示意图"></svg><div class="caption" id="layoutCaption"></div></section>
 <section class="panel output-panel combined-panel"><div class="phead">
-<div class="overview-plot-title"><h2>2D 相机与光机视野</h2><span class="depth-current" id="activeDepthLabel" aria-live="polite">中间 · WD 115.00 mm</span></div>
+<div class="overview-plot-title"><h2>2D 相机与光机视野</h2><span class="depth-current" id="activeDepthLabel" aria-live="polite">名义工作平面 · WD 115.00 mm</span></div>
 <div class="tabs depth-tabs" id="depthTabs" role="group" aria-label="视野工作平面">
 <button type="button" data-depth="near" aria-pressed="false" aria-controls="combinedFootprint footprint" disabled>近端</button>
-<button type="button" data-depth="middle" class="active" aria-pressed="true" aria-controls="combinedFootprint footprint">中间</button>
+<button type="button" data-depth="middle" class="active" aria-pressed="true" aria-controls="combinedFootprint footprint" title="名义工作平面 Z=0">名义平面</button>
 <button type="button" data-depth="far" aria-pressed="false" aria-controls="combinedFootprint footprint" disabled>远端</button>
 </div>
 <button class="plot-export" data-export-plot="combinedFootprint" data-title="相机与光机叠加视野">导出此图</button></div><svg id="combinedFootprint" class="plot" role="img" aria-label="同一工作平面上的相机、光机及重合视野"></svg><div class="combined-summaries"><div><div class="camera-summary-row"><div class="camera-column camera-main-column"><h3 class="camera-summary-title" id="cameraOutputTitle">2D 相机视野</h3><div id="cameraOutput" class="output-summary camera-main-info"></div></div><div class="camera-column clearance-column" id="clearanceColumn" aria-hidden="true" style="visibility:hidden"><h3 class="clearance-title">投影余量 <small>mm</small></h3><div id="cameraClearance" class="clearance-slot"></div></div></div></div><div class="stereo-only" hidden><div class="camera-summary-row"><div class="camera-column camera-main-column"><h3 class="right-summary-title">右相机视野</h3><div id="cameraOutput2" class="output-summary camera-main-info"></div></div><div class="camera-column clearance-column" id="clearanceColumn2" aria-hidden="true" style="visibility:hidden"><h3 class="clearance-title">投影余量 <small>mm</small></h3><div id="cameraClearance2" class="clearance-slot"></div></div></div></div><div><h3 class="projector-summary-title">光机视野</h3><div id="projectorOutput" class="output-summary"></div></div></div><div class="caption">蓝色为单目/左相机，紫色为右相机，虚线为对应完整 Sensor，橙色为光机投影，绿色为 3D 共同视野。各范围使用同一坐标和比例。T/C 为相机未被光机覆盖的区域；分区尺寸见下方。</div></section>

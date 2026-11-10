@@ -15,9 +15,10 @@ function metrics(poly){if(poly.length<3)return {area:0,width:0,height:0,center:n
 function number(v,name,min=-Infinity,max=Infinity){if(!Number.isFinite(v)||v<min||v>max)throw Error(name+' 超出有效范围');}
 function validateDevice(d,name){for(const k of ['f','w','h','wd'])number(d[k],name+' '+k,0.000001,1e7);for(const k of ['yaw','pitch'])number(d[k],name+' '+k,-89.9,89.9);number(d.roll,name+' roll',-360,360);for(const k of ['ox','oy'])number(d[k],name+' '+k,-1e5,1e5);}
 function height(d,mode){const c=-basis(d).axis[2];const offset=(d.model||'pinhole')==='magnification'?0:(d.originOffset||0);return (mode==='axis'?d.wd*c:d.wd)+offset*c;}
-// Absolute distance from the camera front along its optical axis to the target plane.
-function workingDistance(s){const c=-basis(s.camera).axis[2];return (s.wdMode==='axis'?s.camera.wd:s.camera.wd/c)-s.plane/c;}
-function planeAtDistance(s,d){number(d,'其他工作距离',0.000001,1e7);const c=-basis(s.camera).axis[2];return ((s.wdMode==='axis'?s.camera.wd:s.camera.wd/c)-d)*c;}
+// Distances are measured from the camera front along its optical axis.
+function nominalDistance(s,c=-basis(s.camera).axis[2]){return s.wdMode==='axis'?s.camera.wd:s.camera.wd/c;}
+function workingDistance(s){const c=-basis(s.camera).axis[2];return nominalDistance(s,c)-s.plane/c;}
+function planeAtDistance(s,d){number(d,'截面工作距离',0.000001,1e7);const c=-basis(s.camera).axis[2];return (nominalDistance(s,c)-d)*c;}
 function footprint(d,pos,z,roi){const b=basis(d);let w=d.w,h=d.h,ox=d.ox,oy=d.oy;if(roi){w*=roi.rw/roi.nx;h*=roi.rh/roi.ny;ox+=d.w*((roi.rx+roi.rw/2)/roi.nx-0.5);oy+=d.h*(0.5-(roi.ry+roi.rh/2)/roi.ny);}
 const uv=[[-w/2,-h/2],[w/2,-h/2],[w/2,h/2],[-w/2,h/2]];
 const points=uv.map(([x,y])=>{const r=add(b.axis,add(mul(b.u,(x+ox)/d.f),mul(b.v,(y+oy)/d.f)));if(r[2]>=-1e-8)throw Error('视场边缘光线平行或背离工作平面，请减小倾角、幅面或偏心');const t=(z-pos[2])/r[2];if(t<=0)throw Error('工作平面必须位于两个光心的前方');return [pos[0]+t*r[0],pos[1]+t*r[1]];});
@@ -77,15 +78,15 @@ function coverageClearance(camera,projector){
  const covered=corners.every(c=>c.inside),minimumSigned=Math.min(...corners.map(c=>c.signedDistance));return{covered,corners,minimum:covered?minimumSigned:null,minimumSigned,maxOverflow:Math.max(0,-minimumSigned),outsideCount:corners.filter(c=>!c.inside).length,tolerance};
 }
 function solveWorkPlanes(s){
- const wd=workingDistance(s);
- const middle={key:'middle',label:'中间',wd,z:s.plane,result:solve(s)};
- const planes=[middle],errors={},range=s.depthRange||{};
+ const wd=nominalDistance(s);
+ const nominal={key:'middle',label:'名义工作平面',wd,z:0,result:solve({...s,plane:0})};
+ const planes=[nominal],errors={},range=s.depthRange||{};
  for(const [key,label] of [['near','近端'],['far','远端']]){
   if(range[key]===undefined||range[key]==='')continue;
   try{
    const distance=Number(range[key]);
    number(distance,label+'工作距离',0.000001,1e7);
-   if(key==='near'?distance>=wd:distance<=wd)throw Error(key==='near'?'必须小于中间工作距离':'必须大于中间工作距离');
+   if(key==='near'?distance>=wd:distance<=wd)throw Error(key==='near'?'必须小于名义工作距离':'必须大于名义工作距离');
    const z=planeAtDistance(s,distance);
    const plane={key,label,wd:distance,z,result:solve({...s,plane:z})};
    if(key==='near')planes.unshift(plane);else planes.push(plane);
@@ -362,6 +363,6 @@ stereoSetup.camera.yaw=Math.atan(stereoSetup.stereoMount.leftGap/stereoSetup.cam
 stereoSetup.camera2.yaw=-stereoSetup.camera.yaw;stereoSetup.projector.yaw=0;
 defaults.setups={mono:monoSetup,stereo:stereoSetup};
 
-const api={depthOfField,diffractionSpot,coverageClearance,pixelSpacing,pixelSampling,fovAngles,pixelSpan,basis,area,intersect,metrics,solve,solveWorkPlanes,stereoReference,setupKeys,footprint,slice,sliceSegment,frameDimensions,missingEdges,subtractConvex,regionDimensions,overlapDimensions,coverageRegions,defaults,distance,height,workingDistance,planeAtDistance,cameraOptics,projectorOptics,parseTable,interpolate};if(typeof module!=='undefined'&&module.exports)module.exports=api;root.FOV=api;
+const api={depthOfField,diffractionSpot,coverageClearance,pixelSpacing,pixelSampling,fovAngles,pixelSpan,basis,area,intersect,metrics,solve,solveWorkPlanes,stereoReference,setupKeys,footprint,slice,sliceSegment,frameDimensions,missingEdges,subtractConvex,regionDimensions,overlapDimensions,coverageRegions,defaults,distance,height,nominalDistance,workingDistance,planeAtDistance,cameraOptics,projectorOptics,parseTable,interpolate};if(typeof module!=='undefined'&&module.exports)module.exports=api;root.FOV=api;
 })(typeof globalThis!=='undefined'?globalThis:this);
 
