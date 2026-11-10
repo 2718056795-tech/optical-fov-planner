@@ -88,5 +88,32 @@ console.log('== 线激光 ==');
  near(saved.baseline,r.baseline,1e-9,'方案保存/载入基线一致');
 }
 
+console.log('== 相机景深 ==');
+{
+ const values=FOV.depthOfField(23,8,5,115);
+ near(values[0].total,2.000151240169389,1e-10,'标准几何与原脚本一致');
+ near(values[1].total,1.597299252471666,1e-10,'超焦距近似与原脚本一致');
+ near(values[2].total,1.600077432858755,1e-10,'有限共轭与原脚本一致');
+ const h=values[1].hyperfocal;
+ const justBefore=FOV.depthOfField(23,8,5,h-1);
+ ok(justBefore[0].far===Infinity&&Number.isFinite(justBefore[1].far)&&Number.isFinite(justBefore[2].far),'三式保留各自的无穷远阈值');
+ ok(FOV.depthOfField(23,8,5,h).every(row=>row.far===Infinity&&row.total===Infinity),'达到超焦距时远端和总景深显示无穷远');
+ throws(()=>FOV.depthOfField(23,0,5,115),'拒绝零光圈 F 值');
+ throws(()=>FOV.depthOfField(23,8,5,23),'拒绝轴向物距等于焦距');
+}
+
+
+console.log('== 对焦处衍射斑 ==');
+{
+ const spot=FOV.diffractionSpot(8,550,5);
+ near(spot.diameterUm,10.736,1e-12,'输入 F8 的艾里斑第一暗环直径，μm');
+ near(spot.pixels,2.1472,1e-12,'艾里斑直径跨越的像元数');
+ near(FOV.diffractionSpot(4,550,5).diameterUm,spot.diameterUm/2,1e-12,'衍射斑直径正比于输入 F 值');
+ near(FOV.diffractionSpot(8,550,2.5).pixels,spot.pixels*2,1e-12,'像元尺寸只改变跨越像元数');
+ throws(()=>FOV.diffractionSpot(0,550,5),'拒绝零光圈 F 值');
+ throws(()=>FOV.diffractionSpot(8,0,5),'拒绝零波长');
+ throws(()=>FOV.diffractionSpot(8,550,Infinity),'拒绝非有限像元尺寸');
+}
+
 console.log('\n结果：'+passed+' 通过，'+failed+' 失败');
 process.exit(failed?1:0);

@@ -144,7 +144,7 @@ body:has(.fov-toolbar #toast:not(:empty)) #structuredMain .content > #modelInfo,
 body:has(.fov-toolbar #toast:not(:empty)) #lineMain .content > #lineStatus:not(.bad) { padding-inline-end: min(35vw, 450px); }
 
 #structuredMain, #lineMain { gap: var(--workbench-gap); }
-:is(#structuredMain, #lineMain) .content .panel, #structuredMain .stat {
+:is(#structuredMain, #lineMain) .content .panel {
   border-color: var(--workbench-divider);
   border-radius: var(--workbench-panel-radius);
   box-shadow: none;
@@ -226,3 +226,51 @@ body:has(.fov-toolbar #toast:not(:empty)) #lineMain .content > #lineStatus:not(.
   .fov-toolbar p { display: block; }
   .fov-toolbar .header-toolbar-slot, .fov-toolbar #toast, .fov-toolbar .product-selector { display: none !important; }
 }
+
+/* Camera depth-of-field comparisons share one three-column grid. */
+.dof-panel .phead { padding: 10px 14px; }
+.dof-panel .body { padding: 10px 14px 12px; }
+.dof-group + .dof-group { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--workbench-quiet-divider); }
+.dof-group-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 3px 12px; margin-bottom: 7px; }
+.dof-group-head h3, .dof-result h4 { margin: 0; color: var(--workbench-text); font-size: 13px; }
+.dof-controls { display: flex; flex-wrap: wrap; gap: 7px 10px; }
+.dof-input { flex: 1 1 95px; min-width: 70px; max-width: 160px; }
+.dof-input-pair { display: grid; flex: 1 1 166px; min-width: 156px; max-width: 225px; grid-template-columns: minmax(0, 1fr) 94px; align-content: end; column-gap: 5px; }
+.dof-input-pair > label { grid-column: 1 / -1; }
+.dof-controls label { font-size: 11px; }
+.dof-input-pair > select { padding-inline: 7px 23px; }
+.dof-controls input, .dof-controls select { height: var(--workbench-control-height); margin-top: 3px; padding-block: 4px; font-size: 12px; border-radius: var(--workbench-control-radius); }
+.dof-controls input[readonly] { background: #eeeff3; }
+.dof-datum, .dof-error, .dof-note { margin: 7px 0; font-size: 11px; }
+.dof-error { color: #a13e26; }
+.dof-results { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.dof-result { min-width: 0; padding: 10px; border: 1px solid var(--workbench-quiet-divider); border-radius: var(--workbench-panel-radius); background: #fafafd; overflow-wrap: anywhere; }
+.dof-method, .dof-hyperfocal { font-size: 11px; }
+.dof-total { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 1px 8px; margin-top: 7px; color: var(--workbench-secondary); font-size: 11px; }
+.dof-total strong { color: var(--workbench-text); font-size: 19px; line-height: 1.25; }
+.dof-result dl { display: grid; gap: 3px; margin: 6px 0 0; font-size: 11px; }
+.dof-result dl > div { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 1px 6px; }
+.dof-result dt { color: var(--workbench-secondary); }
+.dof-result dd { margin: 0; color: var(--workbench-text); }
+.dof-hyperfocal { margin-top: 5px; }
+.dof-note { margin-bottom: 0; }
+
+@media (max-width: 540px) {
+  .dof-panel .phead, .dof-panel .body { padding-inline: 10px; }
+  .dof-input { flex-basis: 125px; max-width: none; }
+  .dof-input-pair { max-width: none; }
+  .dof-results { gap: 5px; }
+  .dof-result { padding: 7px 6px; }
+  .dof-result h4 { font-size: 12px; }
+  .dof-total { display: block; }
+  .dof-total strong { display: block; font-size: 16px; }
+  .dof-result dl > div { display: block; }
+}
+
+.dof-diffraction { margin-top: 8px; padding: 8px 10px; border: 1px solid var(--workbench-quiet-divider); border-radius: var(--workbench-panel-radius); }
+.dof-diffraction h4 { margin: 0; color: var(--workbench-text); font-size: 12px; }
+.dof-diffraction h4 span { margin-left: 4px; font-size: 11px; font-weight: 400; }
+.dof-diffraction dl { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; margin: 5px 0; overflow-wrap: anywhere; }
+.dof-diffraction dt { font-size: 11px; color: var(--workbench-secondary); }
+.dof-diffraction dd { margin: 1px 0 0; color: var(--workbench-text); font-size: 14px; font-weight: 600; }
+.dof-diffraction-note, .dof-diffraction-error { margin: 4px 0 0; font-size: 11px; }

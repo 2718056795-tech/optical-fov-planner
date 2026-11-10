@@ -3,10 +3,10 @@
 const main=document.getElementById('structuredMain'),content=main.querySelector('.content'),plots=content.querySelector('.plots'),combined=plots.querySelector('.combined-panel'),overlap=plots.querySelector('.overlap-panel');
 // The optical overview is the first result, before the detailed numerical reports.
 plots.before(document.createComment('overview-first'));
-overlap.remove();content.querySelector('.pixel-panel').after(overlap);
-content.insertBefore(plots,document.getElementById('stats'));
+overlap.remove();
+document.getElementById('modelInfo').after(plots);
 const measures=document.createElement('section');measures.id='overviewMeasures';measures.className='panel overview-measures';
-const measureHead=document.createElement('div');measureHead.className='phead';measureHead.innerHTML='<h2>视野尺寸与投影余量</h2>';measureHead.append(content.querySelector('.legend'));measures.append(measureHead,combined.querySelector('.combined-summaries'));plots.after(measures);
+const measureHead=document.createElement('div');measureHead.className='phead';measureHead.innerHTML='<h2>视野尺寸与投影余量</h2>';measureHead.append(content.querySelector('.legend'));const summaries=combined.querySelector('.combined-summaries');summaries.setAttribute('aria-live','polite');measures.append(measureHead,summaries);plots.after(overlap,measures);
 // Keep the complete dimension and clearance block when the field view is expanded.
 let measureSlot=null;combined.querySelector('.plot-zoom').addEventListener('click',()=>{if(combined.closest('#plotDialog')){measureSlot=document.createComment('overview-measure-position');measures.before(measureSlot);combined.append(measures);}});
 document.getElementById('plotDialog').addEventListener('close',()=>{if(measureSlot){measureSlot.replaceWith(measures);measureSlot=null;}});
@@ -29,8 +29,8 @@ for(const panel of plots.children){
 }
 // Readable display values do not round the underlying parameter or export data.
 function inputValue(e){if(e.id==='otherWD')return FOV.workingDistance(state);return get(state,e.dataset.path);}
-main.addEventListener('focusin',e=>{const n=e.target;if(!n.matches('input[type="number"]')||n.readOnly||(!n.dataset.path&&n.id!=='otherWD'))return;const v=inputValue(n);if(Number.isFinite(v))n.value=String(v);});
-main.addEventListener('focusout',e=>{const n=e.target;if(!n.matches('input[type="number"]')||n.readOnly||(!n.dataset.path&&n.id!=='otherWD'))return;n.value=displayNumber(inputValue(n),n.dataset.path||'');});
+main.addEventListener('focusin',e=>{const n=e.target;if(!n.matches('input[type="number"]')||n.readOnly||n.dataset.path?.includes('.dof.')||(!n.dataset.path&&n.id!=='otherWD'))return;const v=inputValue(n);if(Number.isFinite(v))n.value=String(v);});
+main.addEventListener('focusout',e=>{const n=e.target;if(!n.matches('input[type="number"]')||n.readOnly||n.dataset.path?.includes('.dof.')||(!n.dataset.path&&n.id!=='otherWD'))return;n.value=displayNumber(inputValue(n),n.dataset.path||'');});
 // Match the full illustration cards across product lines; keep measurements below them.
 const laserMain=document.getElementById('lineMain'),laserPlots=laserMain.querySelector('.laser-plots'),laserMeasures=document.createElement('section');laserMeasures.id='lineOverviewMeasures';laserMeasures.className='panel line-overview-measures';laserMeasures.innerHTML='<div class="phead"><h2>安装与梯形视野尺寸</h2><span class="small">mm · °</span></div><div class="line-measure-columns"></div>';
 let laserMeasureSlot=null,laserMeasureGroup=null;
@@ -109,7 +109,7 @@ const style=document.createElement('style');style.id='overview-first-style';styl
 #structuredMain .plots .plot,#structuredMain .plots .layout-panel>#layout{height:var(--overview-plot-height);min-height:0;flex:none}
 .diagram-help{margin:0;flex:none;border-top:1px solid #f3f3f6;border-radius:0}.diagram-help>summary{padding:5px 12px;font-size:10px;line-height:15px}.diagram-help>.caption{margin:0;padding:0 12px 10px;font-size:10px}.plots .layout-panel,.plots .combined-panel{justify-content:flex-start}.plots .diagram-help{margin-top:auto}
 .overview-measures>.phead{padding:10px 14px;flex-wrap:wrap;gap:8px}.overview-measures h2{font-size:13px}.overview-measures .legend{font-size:10px;padding:0;gap:10px}.overview-measures>.combined-summaries,.stereo-mode .overview-measures>.combined-summaries{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr));gap:6px}.overview-measures>.combined-summaries>div:last-child{grid-column:auto}
-#structuredMain .stats{gap:10px}#structuredMain .stat{padding:12px 14px}#structuredMain .pixel-panel .phead{padding:10px 14px}
+#structuredMain .pixel-panel .phead{padding:10px 14px}
 #structuredMain .parameter-grid .body{padding:9px 12px 11px}#structuredMain .parameter-grid .phead{gap:7px}#structuredMain .parameter-grid .phead h2{flex:1}
 #structuredMain .parameter-grid .fields{row-gap:8px}.parameter-help-trigger{flex:none;width:20px;height:20px;padding:0;border:1px solid #e6e6ec;border-radius:50%;background:#f7f7fa;color:#8e8e93;font-size:11px;line-height:18px}.parameter-help-trigger[aria-expanded="true"]{color:#007aff;border-color:#b9d6ff;background:#f1f7ff}
 .parameter-notes{margin-top:10px;border-top:1px solid #efeff4;padding-top:4px;font-size:11px;color:#8e8e93;line-height:1.7}.parameter-notes[hidden]{display:none!important}.parameter-notes h4{font-size:11px;font-weight:600;color:#6e6e78;margin:7px 0 3px}.parameter-notes p,.parameter-notes .small{font-size:11px;line-height:1.7;margin:4px 0}.parameter-notes .caption{padding:0}.parameter-notes>section+section{margin-top:8px}

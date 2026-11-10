@@ -278,12 +278,61 @@ function frameDimensions(d){
   leftSegment:[p[0],p[3]],rightSegment:[p[1],p[2]],middleSegment,highSegment,
   upper:distance(p[2],p[3]),lower:distance(p[0],p[1]),axisX:d.axisHit[0]};
 }
+function depthLimits(focusDistance, focusOffset, scaleDistance, farAtInfinity=false) {
+  const blurRatio = focusOffset / scaleDistance;
+  number(blurRatio, '景深计算参数', 0);
+  const near = focusDistance / (1 + blurRatio);
+  const front = focusDistance * (blurRatio / (1 + blurRatio));
+  const farDenominator = scaleDistance - focusOffset;
+  if (farAtInfinity || farDenominator <= 0) return {near, far: Infinity, front, back: Infinity, total: Infinity};
+
+  const far = focusDistance * (scaleDistance / farDenominator);
+  number(far, '景深远端');
+  const back = focusDistance * (focusOffset / farDenominator);
+  return {near, far, front, back, total: front + back};
+}
+
+// Nominal focal length and axial focus distance in mm, permissible blur diameter in µm.
+function depthOfField(focalLength, fNumber, circleOfConfusionUm, focusDistance) {
+  number(focalLength, '焦距', Number.MIN_VALUE);
+  number(fNumber, '光圈 F 值', Number.MIN_VALUE);
+  number(circleOfConfusionUm, '容许弥散斑直径', Number.MIN_VALUE);
+  number(focusDistance, '轴向对焦物距', Number.MIN_VALUE);
+  if (focusDistance <= focalLength) throw Error('轴向对焦物距必须大于焦距');
+
+  const blurDiameter = circleOfConfusionUm / 1000;
+  const baseDistance = focalLength ** 2 / (fNumber * blurDiameter);
+  number(baseDistance, '景深计算参数', Number.MIN_VALUE);
+  const hyperfocal = baseDistance + focalLength;
+  number(hyperfocal, '超焦距');
+
+  const focusFromFocalPoint = focusDistance - focalLength;
+  const standard = depthLimits(focusDistance, focusDistance, baseDistance);
+  // Keep the original script's hyperfocal approximation and its infinity threshold.
+  const originalHyperfocal = depthLimits(focusDistance, focusFromFocalPoint, hyperfocal, focusDistance >= hyperfocal);
+  const thinLens = depthLimits(focusDistance, focusFromFocalPoint, baseDistance, focusDistance >= hyperfocal);
+  return [standard, {...originalHyperfocal, hyperfocal}, thinLens];
+}
+
+// Airy disk diameter to the first dark ring, using the entered F-number.
+function diffractionSpot(fNumber, wavelengthNm, pixelPitchUm) {
+  number(fNumber, '光圈 F 值', Number.MIN_VALUE);
+  number(wavelengthNm, '波长', Number.MIN_VALUE);
+  number(pixelPitchUm, '像元尺寸', Number.MIN_VALUE);
+
+  const diameterUm = 2.44 * (wavelengthNm / 1000) * fNumber;
+  const pixels = diameterUm / pixelPitchUm;
+  number(diameterUm, '衍射斑直径', Number.MIN_VALUE);
+  number(pixels, '衍射斑跨越像元数', Number.MIN_VALUE);
+  return {diameterUm, pixels};
+}
+
 function parseTable(source){if(typeof source!=='string')throw Error('倍率表需要文本');const rows=source.trim().split(/\n+/).filter(x=>x.trim()).map((line,i)=>{const a=line.trim().split(/[,，;；\s]+/).map(Number);if(a.length!==2||!a.every(Number.isFinite)||a[0]<=0||a[1]<=0)throw Error('倍率表第 '+(i+1)+' 行应为：镜头前端轴向距离,正倍率');return {wd:a[0],mag:a[1]};}).sort((a,b)=>a.wd-b.wd);if(rows.length<2)throw Error('倍率表至少需要两行');if(rows.length>200)throw Error('倍率表最多支持 200 行');for(let i=1;i<rows.length;i++)if(rows[i].wd===rows[i-1].wd)throw Error('倍率表距离不能重复');return rows;}
 function interpolate(rows,wd){if(wd<rows[0].wd-1e-8||wd>rows[rows.length-1].wd+1e-8)throw Error('镜头前端轴向 WD 不在规格书倍率表范围 '+rows[0].wd+'–'+rows[rows.length-1].wd+' mm 内；不自动外推');for(let i=0;i<rows.length;i++){if(Math.abs(wd-rows[i].wd)<1e-8)return rows[i].mag;if(i>0&&wd<rows[i].wd){const a=rows[i-1],b=rows[i],t=(wd-a.wd)/(b.wd-a.wd);return a.mag+(b.mag-a.mag)*t;}}return rows[rows.length-1].mag;}
 function cameraOptics(d,mode){const model=d.model||'pinhole',c=-basis(d).axis[2],offset=model==='magnification'?0:(d.originOffset===undefined?0:d.originOffset);number(offset,'光心后移量',-1e5,1e5);const frontAxisWD=mode==='axis'?d.wd:d.wd/c;const u=frontAxisWD+offset;number(u,'光心到参考平面的轴向距离',1e-6,1e8);let effectiveF=d.f,mag,calWD=null;if(model==='thin'){if(u<=d.f)throw Error('薄透镜模式要求物距（含光心后移）大于焦距');mag=d.f/(u-d.f);effectiveF=mag*u;}else if(model==='magnification'){number(d.mag,'参考倍率',1e-8,1e5);number(d.magWD,'倍率参考镜头前端轴向距离',1e-6,1e7);calWD=d.magWD;number(calWD,'倍率参考距离',1e-6,1e8);effectiveF=d.mag*calWD;mag=effectiveF/u;}else if(model==='pinhole'){mag=d.f/u;}else throw Error('未知相机成像模型');return {model,effectiveF,mag,frontAxisWD,axisWD:u,originOffset:offset,calWD};}
 function projectorOptics(d){const link=d.link||'f';if(!['f','tr'].includes(link))throw Error('未知 TR 联动基准');let f=d.f;if(link==='tr'){number(d.tr,'投射比 TR',1e-8,1e5);f=d.tr*d.w;}return {...d,f};}
 
-const defaults={version:10,pixelMode:'normal',wdMode:'normal',baselineMode:'x',baseline:66.4,mountZ:0,plane:0,camera:{f:23,w:10.24,h:6,wd:115,yaw:0,pitch:0,roll:0,ox:0,oy:0,model:'pinhole',originOffset:0,mag:.1572,magWD:115,pixelPitch:5},projector:{f:14,w:7.6,h:4.3,wd:115,yaw:-30,pitch:0,roll:0,ox:0,oy:0,tr:14/7.6,link:'f',nx:1280,ny:720},roi:{nx:2048,ny:1200,rw:2048,rh:1200,rx:0,ry:0}};
+const defaults={version:10,pixelMode:'normal',wdMode:'normal',baselineMode:'x',baseline:66.4,mountZ:0,plane:0,camera:{f:23,w:10.24,h:6,wd:115,yaw:0,pitch:0,roll:0,ox:0,oy:0,model:'pinhole',originOffset:0,mag:.1572,magWD:115,pixelPitch:5,dof:{fNumber:8,focalLength:23,focusDistance:115,pixelPitch:5,wavelengthNm:550,cocMode:'pixel',cocPixels:1,cocUm:5}},projector:{f:14,w:7.6,h:4.3,wd:115,yaw:-30,pitch:0,roll:0,ox:0,oy:0,tr:14/7.6,link:'f',nx:1280,ny:720},roi:{nx:2048,ny:1200,rw:2048,rh:1200,rx:0,ry:0}};
 
 const cloneSetup=x=>JSON.parse(JSON.stringify(x));
 defaults.scene='mono';defaults.camera2=cloneSetup(defaults.camera);defaults.roi2=cloneSetup(defaults.roi);
@@ -295,6 +344,6 @@ stereoSetup.camera.yaw=Math.atan(stereoSetup.stereoMount.leftGap/stereoSetup.cam
 stereoSetup.camera2.yaw=-stereoSetup.camera.yaw;stereoSetup.projector.yaw=0;
 defaults.setups={mono:monoSetup,stereo:stereoSetup};
 
-const api={coverageClearance,pixelSpacing,pixelSampling,fovAngles,pixelSpan,basis,area,intersect,metrics,solve,stereoReference,setupKeys,footprint,slice,sliceSegment,frameDimensions,missingEdges,subtractConvex,regionDimensions,overlapDimensions,coverageRegions,defaults,distance,height,workingDistance,planeAtDistance,cameraOptics,projectorOptics,parseTable,interpolate};if(typeof module!=='undefined'&&module.exports)module.exports=api;root.FOV=api;
+const api={depthOfField,diffractionSpot,coverageClearance,pixelSpacing,pixelSampling,fovAngles,pixelSpan,basis,area,intersect,metrics,solve,stereoReference,setupKeys,footprint,slice,sliceSegment,frameDimensions,missingEdges,subtractConvex,regionDimensions,overlapDimensions,coverageRegions,defaults,distance,height,workingDistance,planeAtDistance,cameraOptics,projectorOptics,parseTable,interpolate};if(typeof module!=='undefined'&&module.exports)module.exports=api;root.FOV=api;
 })(typeof globalThis!=='undefined'?globalThis:this);
 
