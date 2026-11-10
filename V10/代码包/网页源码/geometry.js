@@ -76,6 +76,23 @@ function coverageClearance(camera,projector){
  });
  const covered=corners.every(c=>c.inside),minimumSigned=Math.min(...corners.map(c=>c.signedDistance));return{covered,corners,minimum:covered?minimumSigned:null,minimumSigned,maxOverflow:Math.max(0,-minimumSigned),outsideCount:corners.filter(c=>!c.inside).length,tolerance};
 }
+function solveWorkPlanes(s){
+ const wd=workingDistance(s);
+ const middle={key:'middle',label:'中间',wd,z:s.plane,result:solve(s)};
+ const planes=[middle],errors={},range=s.depthRange||{};
+ for(const [key,label] of [['near','近端'],['far','远端']]){
+  if(range[key]===undefined||range[key]==='')continue;
+  try{
+   const distance=Number(range[key]);
+   number(distance,label+'工作距离',0.000001,1e7);
+   if(key==='near'?distance>=wd:distance<=wd)throw Error(key==='near'?'必须小于中间工作距离':'必须大于中间工作距离');
+   const z=planeAtDistance(s,distance);
+   const plane={key,label,wd:distance,z,result:solve({...s,plane:z})};
+   if(key==='near')planes.unshift(plane);else planes.push(plane);
+  }catch(e){errors[key]=label+'：'+e.message;}
+ }
+ return {planes,errors};
+}
 function solve(s){const r=s.scene==='stereo'?solveStereo(s):solveMono(s);r.clearance={camera:coverageClearance(r.active.points,r.projector.points)};if(s.scene==='stereo')r.clearance.camera2=coverageClearance(r.active2.points,r.projector.points);return r;}
 
 // Pixel boundaries are traced by the same central projection as the footprint.
@@ -336,14 +353,15 @@ const defaults={version:10,pixelMode:'normal',wdMode:'normal',baselineMode:'x',b
 
 const cloneSetup=x=>JSON.parse(JSON.stringify(x));
 defaults.scene='mono';defaults.camera2=cloneSetup(defaults.camera);defaults.roi2=cloneSetup(defaults.roi);
+defaults.depthRange={near:'',far:'',selected:'middle'};
 defaults.stereoMount={leftGap:66.4,rightGap:66.4,leftZ:0,rightZ:0};
-const setupKeys=['pixelMode','wdMode','baselineMode','baseline','mountZ','plane','camera','projector','roi','camera2','roi2','stereoMount'];
+const setupKeys=['pixelMode','wdMode','baselineMode','baseline','mountZ','plane','depthRange','camera','projector','roi','camera2','roi2','stereoMount'];
 const monoSetup=Object.fromEntries(setupKeys.map(k=>[k,cloneSetup(defaults[k])]));
 const stereoSetup=cloneSetup(monoSetup);
 stereoSetup.camera.yaw=Math.atan(stereoSetup.stereoMount.leftGap/stereoSetup.camera.wd)*180/Math.PI;
 stereoSetup.camera2.yaw=-stereoSetup.camera.yaw;stereoSetup.projector.yaw=0;
 defaults.setups={mono:monoSetup,stereo:stereoSetup};
 
-const api={depthOfField,diffractionSpot,coverageClearance,pixelSpacing,pixelSampling,fovAngles,pixelSpan,basis,area,intersect,metrics,solve,stereoReference,setupKeys,footprint,slice,sliceSegment,frameDimensions,missingEdges,subtractConvex,regionDimensions,overlapDimensions,coverageRegions,defaults,distance,height,workingDistance,planeAtDistance,cameraOptics,projectorOptics,parseTable,interpolate};if(typeof module!=='undefined'&&module.exports)module.exports=api;root.FOV=api;
+const api={depthOfField,diffractionSpot,coverageClearance,pixelSpacing,pixelSampling,fovAngles,pixelSpan,basis,area,intersect,metrics,solve,solveWorkPlanes,stereoReference,setupKeys,footprint,slice,sliceSegment,frameDimensions,missingEdges,subtractConvex,regionDimensions,overlapDimensions,coverageRegions,defaults,distance,height,workingDistance,planeAtDistance,cameraOptics,projectorOptics,parseTable,interpolate};if(typeof module!=='undefined'&&module.exports)module.exports=api;root.FOV=api;
 })(typeof globalThis!=='undefined'?globalThis:this);
 

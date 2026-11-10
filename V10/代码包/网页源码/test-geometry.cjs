@@ -9,6 +9,35 @@ const clone=x=>JSON.parse(JSON.stringify(x));
 
 console.log('== 面阵结构光 ==');
 {
+ const s=clone(FOV.defaults);
+ delete s.depthRange;
+ ok(FOV.solveWorkPlanes(s).planes.length===1,'旧方案未设近远端时只计算中间平面');
+ s.depthRange={near:'90',far:'145',selected:'middle'};
+ const {planes,errors}=FOV.solveWorkPlanes(s);
+ ok(planes.map(p=>p.key).join(',')==='near,middle,far'&&!Object.keys(errors).length,'按近中远返回三个有效截面');
+ near(planes[0].result.camera.metrics.width,90*s.camera.w/s.camera.f,1e-9,'近端相机视野按实际距离缩小');
+ near(planes[2].result.camera.metrics.width,145*s.camera.w/s.camera.f,1e-9,'远端相机视野按实际距离增大');
+ ok(planes.every(p=>JSON.stringify(p.result.projector.pos)===JSON.stringify(planes[1].result.projector.pos)),'切换截面时光机光心位置固定');
+ s.camera.yaw=16;
+ s.camera.originOffset=6;
+ s.camera.model='thin';
+ const tilted=FOV.solveWorkPlanes(s).planes;
+ const c=-FOV.basis(s.camera).axis[2];
+ near(tilted[0].z,(s.camera.wd/c-90)*c,1e-9,'倾斜相机近端按镜头前端沿轴距离换算 Z');
+ near(tilted[2].result.camera.axisWD-6,145,1e-9,'光心后移时远端输入仍以镜头前端为基准');
+ ok(tilted.every(p=>p.result.optical.effectiveF===tilted[1].result.optical.effectiveF),'选平面保持薄透镜参考对焦设置');
+ s.depthRange.near='140';
+ const partial=FOV.solveWorkPlanes(s);
+ ok(partial.errors.near&&partial.planes.map(p=>p.key).join(',')==='middle,far','近端顺序不合法时仍保留中间和远端结果');
+ s.depthRange.near='0';
+ ok(FOV.solveWorkPlanes(s).errors.near,'显式输入零距离时提示无效');
+ s.scene='stereo';
+ Object.assign(s,clone(s.setups.stereo));
+ s.depthRange={near:'100',far:'160',selected:'middle'};
+ const stereo=FOV.solveWorkPlanes(s).planes;
+ ok(stereo.length===3&&stereo.every(p=>p.result.camera2&&p.result.projector),'双目三截面保留两台相机和中置光机');
+}
+{
  const s=clone(FOV.defaults),r=FOV.solve(s);
  near(r.metrics.area,1536,1e-6,'单目默认重合面积 51.2×30');
  near(r.cameraCoverage,1,1e-12,'单目默认 ROI 全覆盖');

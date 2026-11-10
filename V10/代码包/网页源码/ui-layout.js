@@ -10,9 +10,6 @@ const measureHead=document.createElement('div');measureHead.className='phead';me
 // Keep the complete dimension and clearance block when the field view is expanded.
 let measureSlot=null;combined.querySelector('.plot-zoom').addEventListener('click',()=>{if(combined.closest('#plotDialog')){measureSlot=document.createComment('overview-measure-position');measures.before(measureSlot);combined.append(measures);}});
 document.getElementById('plotDialog').addEventListener('close',()=>{if(measureSlot){measureSlot.replaceWith(measures);measureSlot=null;}});
-// Put the current target distance next to the installation inputs.
-const install=main.querySelector('.install-panel'),installHelp=install.querySelector('details.param-help'),wd=document.getElementById('otherWD'),oldDistance=wd.closest('.panel'),wdLabel=document.createElement('label');wdLabel.id='workingDistanceField';wdLabel.append(document.createTextNode('其他工作距离 (mm)'),wd);install.querySelector('.fields').append(wdLabel);
-for(const id of ['baselineInfo','distanceHint','workingInfo'])installHelp.append(document.getElementById(id));oldDistance.remove();
 // Explanatory notes remain available from one compact help button per panel.
 let noteIndex=0;for(const panel of main.querySelectorAll('.parameter-grid>.panel')){
  const details=[...panel.querySelectorAll('details.param-help')];if(!details.length)continue;
@@ -24,7 +21,7 @@ let noteIndex=0;for(const panel of main.querySelectorAll('.parameter-grid>.panel
  const button=document.createElement('button');button.type='button';button.className='parameter-help-trigger';button.textContent='?';button.title='查看参数与联动说明';button.setAttribute('aria-label','查看'+panel.querySelector('h2').textContent+'说明');button.setAttribute('aria-controls',notes.id);button.setAttribute('aria-expanded','false');button.onclick=()=>{notes.hidden=!notes.hidden;button.setAttribute('aria-expanded',String(!notes.hidden));};panel.querySelector('.phead').append(button);
 }
 for(const panel of plots.children){
- const head=panel.querySelector('.phead'),tools=document.createElement('div');tools.className='overview-plot-tools';for(const child of [...head.children])if(child.nodeName!=='H2')tools.append(child);head.append(tools);
+ const head=panel.querySelector('.phead'),tools=document.createElement('div');tools.className='overview-plot-tools';for(const child of [...head.children])if(!child.matches('h2,.overview-plot-title'))tools.append(child);head.append(tools);
  const caption=panel.querySelector(':scope>.caption');if(caption){const help=document.createElement('details');help.className='diagram-help';const summary=document.createElement('summary');summary.textContent='图示说明';help.append(summary,caption);panel.append(help);}
 }
 // Readable display values do not round the underlying parameter or export data.

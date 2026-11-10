@@ -274,3 +274,43 @@ body:has(.fov-toolbar #toast:not(:empty)) #lineMain .content > #lineStatus:not(.
 .dof-diffraction dt { font-size: 11px; color: var(--workbench-secondary); }
 .dof-diffraction dd { margin: 1px 0 0; color: var(--workbench-text); font-size: 14px; font-weight: 600; }
 .dof-diffraction-note, .dof-diffraction-error { margin: 4px 0 0; font-size: 11px; }
+
+#structuredMain .install-panel .fields > .depth-distance-fields {
+  flex: 1 0 100%;
+  min-width: 0;
+  border: 0;
+  margin: 3px 0 0;
+  padding: 0;
+}
+.depth-distance-fields legend {
+  margin-bottom: 5px;
+  padding: 0;
+  color: var(--workbench-text);
+  font-size: 12px;
+  font-weight: 600;
+}
+.depth-distance-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 7px; }
+#structuredMain .parameter-grid .depth-distance-grid input { padding-inline: 7px; }
+.depth-distance-grid input[aria-invalid="true"] { border-color: #b14e3a; }
+.depth-input-error { margin: 6px 0 0; color: #a13e26; font-size: 11px; line-height: 1.5; }
+.overview-plot-title { min-width: 0; }
+.overview-plot-title h2 { line-height: 15px; }
+.depth-current {
+  display: block;
+  color: var(--workbench-secondary);
+  font-size: 10px;
+  line-height: 13px;
+  white-space: nowrap;
+}
+.depth-tabs { flex: none; white-space: nowrap; }
+.depth-tabs button { min-width: 34px; }
+.depth-tabs button:focus-visible { outline-color: var(--workbench-accent); }
+
+@media (max-width: 1100px) {
+  #structuredMain .plots > .panel.combined-panel > .phead {
+    flex-wrap: nowrap;
+    padding-block: 7px;
+  }
+  .overview-plot-tools > .depth-tabs button { min-width: 30px; padding-inline: 5px; }
+  .combined-panel .overview-plot-tools > button { white-space: nowrap; }
+}
