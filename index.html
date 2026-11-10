@@ -410,6 +410,46 @@ body:has(.fov-toolbar #toast:not(:empty)) #lineMain .content > #lineStatus:not(.
 .dof-diffraction dd { margin: 1px 0 0; color: var(--workbench-text); font-size: 14px; font-weight: 600; }
 .dof-diffraction-note, .dof-diffraction-error { margin: 4px 0 0; font-size: 11px; }
 
+#structuredMain .install-panel .fields > .depth-distance-fields {
+  flex: 1 0 100%;
+  min-width: 0;
+  border: 0;
+  margin: 3px 0 0;
+  padding: 0;
+}
+.depth-distance-fields legend {
+  margin-bottom: 5px;
+  padding: 0;
+  color: var(--workbench-text);
+  font-size: 12px;
+  font-weight: 600;
+}
+.depth-distance-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 7px; }
+#structuredMain .parameter-grid .depth-distance-grid input { padding-inline: 7px; }
+.depth-distance-grid input[aria-invalid="true"] { border-color: #b14e3a; }
+.depth-input-error { margin: 6px 0 0; color: #a13e26; font-size: 11px; line-height: 1.5; }
+.overview-plot-title { min-width: 0; }
+.overview-plot-title h2 { line-height: 15px; }
+.depth-current {
+  display: block;
+  color: var(--workbench-secondary);
+  font-size: 10px;
+  line-height: 13px;
+  white-space: nowrap;
+}
+.depth-tabs { flex: none; white-space: nowrap; }
+.depth-tabs button { min-width: 34px; }
+.depth-tabs button:focus-visible { outline-color: var(--workbench-accent); }
+
+@media (max-width: 1100px) {
+  #structuredMain .plots > .panel.combined-panel > .phead {
+    flex-wrap: nowrap;
+    padding-block: 7px;
+  }
+  .overview-plot-tools > .depth-tabs button { min-width: 30px; padding-inline: 5px; }
+  .combined-panel .overview-plot-tools > button { white-space: nowrap; }
+}
+
 </style></head><body>
 <header><div><div class="brand">OPTICAL WORKBENCH / 10</div><h1>3D 视觉视野规划 · v10</h1><p>光机投影 × 相机拍摄 → 工作平面上的共同视野</p></div><div><div class="actions"><button id="reset">恢复示例</button><button id="save">保存方案</button><label class="filelabel">载入方案<input id="load" type="file" accept=".json" hidden style="display:none"></label><button id="csv">导出结果 CSV</button><select id="imageFormat" aria-label="导出图片格式" title="单幅和整套图均使用此格式"><option value="bmp">BMP 图片</option><option value="svg">SVG 矢量图</option></select><button id="svgExport">导出图片</button><button id="print">打印 / PDF</button></div><div id="toast" aria-live="polite"></div></div></header>
 <main id="structuredMain"><div class="parameter-grid">
@@ -417,24 +457,40 @@ body:has(.fov-toolbar #toast:not(:empty)) #lineMain .content > #lineStatus:not(.
 <label class="wide">系统模式<select id="sceneMode"><option value="mono">单目 · 一台相机 + 一台光机</option><option value="stereo">双目 · 左相机 + 中置光机 + 右相机</option></select></label><label class="wide">相机工作距离 WD 的定义<select data-path="wdMode"><option value="normal">到参考平面的垂直距离</option><option value="axis">沿光轴到参考平面的距离</option></select></label>
 
 <label id="monoBaselineField">X 方向光心基线 (mm)<input data-path="baseline" type="number" step="0.1"></label><label id="monoZField">Z 光心高度差 (mm)<input data-path="mountZ" type="number" step="0.1"></label>
-<label class="stereo-only" hidden>左相机距光机 X 间距 (mm)<input data-path="stereoMount.leftGap" type="number" min="0" step="0.1"></label><label class="stereo-only" hidden>右相机距光机 X 间距 (mm)<input data-path="stereoMount.rightGap" type="number" min="0" step="0.1"></label><label class="stereo-only" hidden>左相机相对光机 Z (mm)<input data-path="stereoMount.leftZ" type="number" step="0.1"></label><label class="stereo-only" hidden>右相机相对光机 Z (mm)<input data-path="stereoMount.rightZ" type="number" step="0.1"></label></div><p class="small" id="baselineInfo"></p><details class="param-help"><summary>距离与角度说明</summary><p class="small">X 基线为光机相对相机的水平距离；Z 高度差默认 0，正值表示光机高于相机。Y 固定为 0。光机工作距离由相机距离与 Z 高度差联动计算。相机 WD 从镜头前端计量；光机 WD 从等效投影光心计量。参考平面 Z=0。双目时光机 X=0，左相机在负 X、右相机在正 X；两侧 Z 正值表示相机高于光机。两种模式独立记忆参数。正倾角朝 +X，负倾角朝 −X。其他工作距离直接输入镜头前端沿相机光轴至目标平面的直线距离，光机距离自动计算。</p></details></div></section>
+<label class="stereo-only" hidden>左相机距光机 X 间距 (mm)<input data-path="stereoMount.leftGap" type="number" min="0" step="0.1"></label><label class="stereo-only" hidden>右相机距光机 X 间距 (mm)<input data-path="stereoMount.rightGap" type="number" min="0" step="0.1"></label><label class="stereo-only" hidden>左相机相对光机 Z (mm)<input data-path="stereoMount.leftZ" type="number" step="0.1"></label><label class="stereo-only" hidden>右相机相对光机 Z (mm)<input data-path="stereoMount.rightZ" type="number" step="0.1"></label>
+<fieldset class="depth-distance-fields">
+<legend>工作距离 · 沿相机光轴 (mm)</legend>
+<div class="depth-distance-grid">
+<label>近端<input id="nearWD" type="number" min="0.000001" step="any" placeholder="可选" aria-describedby="depthError"></label>
+<label id="workingDistanceField">中间<input id="otherWD" type="number" min="0.000001" step="any" aria-describedby="depthError"></label>
+<label>远端<input id="farWD" type="number" min="0.000001" step="any" placeholder="可选" aria-describedby="depthError"></label>
+</div>
+<p class="depth-input-error" id="depthError" role="status" hidden></p>
+</fieldset>
+</div><details class="param-help"><summary>距离与角度说明</summary><p class="small" id="baselineInfo"></p><p class="small">X 基线为光机相对相机的水平距离；Z 高度差默认 0，正值表示光机高于相机。Y 固定为 0。光机工作距离由相机距离与 Z 高度差联动计算。相机 WD 从镜头前端计量；光机 WD 从等效投影光心计量。参考平面 Z=0。双目时光机 X=0，左相机在负 X、右相机在正 X；两侧 Z 正值表示相机高于光机。两种模式独立记忆参数。正倾角朝 +X，负倾角朝 −X。中间、近端与远端工作距离均从镜头前端沿相机光轴计量，双目时以左相机为准。近端与远端可选，光机距离随所选平面联动。</p><p class="small" id="distanceHint"></p><div class="caption" id="workingInfo"></div></details></div></section>
 <section class="panel camera-panel"><div class="phead"><h2 class="device-title" id="cameraTitle">2D 相机</h2><span class="small">蓝色视野</span></div><div class="body" id="cameraFields"></div></section>
 <section class="panel camera-panel stereo-only" id="rightCameraPanel" hidden><div class="phead"><h2 class="device-title right-title">右相机</h2><button id="copyLeftCamera" type="button">复制左相机 · 倾角镜像</button></div><div class="body" id="cameraFields2"></div><div class="caption">右相机参考距离按左相机参考距离、两侧高度差和右侧倾角联动。</div></section><section class="panel projector-panel"><div class="phead"><h2 class="device-title projector-title">光机 / 投影器</h2><span class="small">橙色视野</span></div><div class="body" id="projectorFields"></div></section>
 
 </div><div class="content">
 <div id="error" class="error" role="alert" hidden></div>
 <div id="modelInfo" class="status"></div>
-<div class="panel"><div class="plane-controls"><label for="otherWD"><strong>其他工作距离 (mm)</strong></label><input aria-label="其他工作距离 毫米" id="otherWD" type="number" min="0.000001" step="1"><span class="small" id="distanceHint">镜头前端沿相机光轴至目标平面的直线距离</span></div><div class="caption" id="workingInfo"></div></div>
 <section class="panel pixel-panel"><div class="phead"><h2>物方像素间距</h2><div class="pixel-controls"><label for="pixelMode">计算方式</label><select id="pixelMode" data-path="pixelMode"><option value="normal">正视矩形（默认）</option><option value="tilted">考虑倾斜影响</option></select><span class="small">mm / 像素</span></div></div><div class="body"><div id="pixelOutput" class="pixel-cards" aria-live="polite"></div><p id="pixelNote" class="pixel-note"></p></div></section>
 <section class="panel dof-panel" aria-labelledby="cameraDofTitle"><div class="phead"><h2 id="cameraDofTitle">相机景深 · 三式对比</h2><span class="small">物方轴向 · mm</span></div><div class="body"><div id="cameraDofGroups"></div><p class="small dof-note">本区参数手动填写，仅供景深与衍射计算。物距沿光轴从物方主面量起。超焦距列保留原脚本的近似与远端判定，仅用于对照。有限共轭列按理想薄透镜估算。</p></div></section>
 <div class="legend"><span class="full">相机完整 Sensor</span><span id="cameraLegend">相机 ROI</span><span class="right-eye stereo-only" hidden>右相机 ROI / 虚线全幅</span><span class="proj">光机投影</span><span class="over">共同视野</span></div>
 <div class="plots">
 <section class="panel output-panel layout-panel"><div class="phead"><h2>光学系统布局</h2><div class="tabs"><button id="view3d" class="active">空间示意</button><button id="viewSide">侧视 X–Z</button><button class="plot-export" data-export-plot="layout" data-title="光学系统布局">导出此图</button></div></div><svg id="layout" class="plot" role="img" aria-label="光机与相机布局示意图"></svg><div class="caption" id="layoutCaption"></div></section>
-<section class="panel output-panel combined-panel"><div class="phead"><h2>2D 相机与光机视野</h2><button class="plot-export" data-export-plot="combinedFootprint" data-title="相机与光机叠加视野">导出此图</button></div><svg id="combinedFootprint" class="plot" role="img" aria-label="同一工作平面上的相机、光机及重合视野"></svg><div class="combined-summaries"><div><div class="camera-summary-row"><div class="camera-column camera-main-column"><h3 class="camera-summary-title" id="cameraOutputTitle">2D 相机视野</h3><div id="cameraOutput" class="output-summary camera-main-info"></div></div><div class="camera-column clearance-column" id="clearanceColumn" aria-hidden="true" style="visibility:hidden"><h3 class="clearance-title">投影余量 <small>mm</small></h3><div id="cameraClearance" class="clearance-slot"></div></div></div></div><div class="stereo-only" hidden><div class="camera-summary-row"><div class="camera-column camera-main-column"><h3 class="right-summary-title">右相机视野</h3><div id="cameraOutput2" class="output-summary camera-main-info"></div></div><div class="camera-column clearance-column" id="clearanceColumn2" aria-hidden="true" style="visibility:hidden"><h3 class="clearance-title">投影余量 <small>mm</small></h3><div id="cameraClearance2" class="clearance-slot"></div></div></div></div><div><h3 class="projector-summary-title">光机视野</h3><div id="projectorOutput" class="output-summary"></div></div></div><div class="caption">蓝色为单目/左相机，紫色为右相机，虚线为对应完整 Sensor，橙色为光机投影，绿色为 3D 共同视野。各范围使用同一坐标和比例。T/C 为相机未被光机覆盖的区域；分区尺寸见下方。</div></section>
+<section class="panel output-panel combined-panel"><div class="phead">
+<div class="overview-plot-title"><h2>2D 相机与光机视野</h2><span class="depth-current" id="activeDepthLabel" aria-live="polite">中间 · WD 115.00 mm</span></div>
+<div class="tabs depth-tabs" id="depthTabs" role="group" aria-label="视野工作平面">
+<button type="button" data-depth="near" aria-pressed="false" aria-controls="combinedFootprint footprint" disabled>近端</button>
+<button type="button" data-depth="middle" class="active" aria-pressed="true" aria-controls="combinedFootprint footprint">中间</button>
+<button type="button" data-depth="far" aria-pressed="false" aria-controls="combinedFootprint footprint" disabled>远端</button>
+</div>
+<button class="plot-export" data-export-plot="combinedFootprint" data-title="相机与光机叠加视野">导出此图</button></div><svg id="combinedFootprint" class="plot" role="img" aria-label="同一工作平面上的相机、光机及重合视野"></svg><div class="combined-summaries"><div><div class="camera-summary-row"><div class="camera-column camera-main-column"><h3 class="camera-summary-title" id="cameraOutputTitle">2D 相机视野</h3><div id="cameraOutput" class="output-summary camera-main-info"></div></div><div class="camera-column clearance-column" id="clearanceColumn" aria-hidden="true" style="visibility:hidden"><h3 class="clearance-title">投影余量 <small>mm</small></h3><div id="cameraClearance" class="clearance-slot"></div></div></div></div><div class="stereo-only" hidden><div class="camera-summary-row"><div class="camera-column camera-main-column"><h3 class="right-summary-title">右相机视野</h3><div id="cameraOutput2" class="output-summary camera-main-info"></div></div><div class="camera-column clearance-column" id="clearanceColumn2" aria-hidden="true" style="visibility:hidden"><h3 class="clearance-title">投影余量 <small>mm</small></h3><div id="cameraClearance2" class="clearance-slot"></div></div></div></div><div><h3 class="projector-summary-title">光机视野</h3><div id="projectorOutput" class="output-summary"></div></div></div><div class="caption">蓝色为单目/左相机，紫色为右相机，虚线为对应完整 Sensor，橙色为光机投影，绿色为 3D 共同视野。各范围使用同一坐标和比例。T/C 为相机未被光机覆盖的区域；分区尺寸见下方。</div></section>
 <section class="panel output-panel overlap-panel"><div class="phead"><h2>3D 重合视野 · 2D 未覆盖尺寸</h2><button class="plot-export" data-export-plot="footprint" data-title="3D重合视野与缺边尺寸">导出此图</button></div><div class="region-controls"><label>选择标注分区<select id="regionChoice" aria-label="选择标注边长的2D未覆盖分区"></select></label><span id="regionChoiceInfo" class="small"></span></div><svg id="footprint" class="plot" role="img" aria-label="重合视野与相机实际未覆盖分区"></svg><div id="overlapOutput" class="output-summary"></div><div class="caption">蓝色虚线为相机 ROI；T/C 标记实际未被光机覆盖的分区，绿色为 3D 重合视野。仅为相机未被光机覆盖的部分标注详细尺寸；双目模式按左右相机分别编号。选择分区后，A、B、C…对应下方各边实长。</div></section></div>
 <div id="status" class="status"></div>
 
-<div id="printParams" class="panel" style="display:none"></div><section class="panel"><div class="phead"><h2>模型与使用说明</h2><span class="small">一阶几何估算</span></div><div class="body note"><p><b>针孔近似与薄透镜：</b>光心后移量沿光轴计量，正值表示位于镜头前端后方。针孔模式用该位置作投影中心；理想薄透镜模式将它近似为物方主面。实际复合镜头需标定。</p><p><b>已知参考倍率：</b>在给定工作距离用倍率确定画幅，不使用光心后移量。名义焦距只作记录；离开参考平面的视野仍采用等效中心投影近似。</p><p><b>TR：</b>TR=投射距离/正投影宽度，联动公式 f投影=TR×DMD有效宽。倾斜平面的实际梯形包络另行计算。</p><p><b>其他工作距离：</b>从相机镜头前端沿光轴量至目标平面。改变此距离时保持参考成像状态；未计算重新调焦、畸变、遮挡和景深。</p><p><b>视场角：</b>X × Y 为镜头出射的幅面角，由幅面边缘与焦距的 atan 计算，包含幅面偏心，与工作距离和安装倾角无关。ROI 开窗与全幅不同时分别给出两组数值；相机取当前成像模型的有效焦距，光机取 TR 联动后的等效焦距。</p><p><b>物方像素间距：</b>正视矩形按各设备沿光轴距离、有效焦距与像素尺寸估算，忽略工作平面倾斜造成的局部倍率变化；考虑倾斜时把像素两条边缘投射到当前工作平面取实长，分别采样左侧、光轴列、右侧。单位 mm/像素，属于几何点间距，不是测量精度。</p><p><b>四角投影余量：</b>相机 ROI 四角到光机投影边界的最短距离，沿当前工作平面按有限边界线段测量；正值为投影内余量，贴边为 0，负值为超出。双目分别判断左右相机，不要求共同视野覆盖单侧 ROI。</p><p><b>共同视野占用像素：</b>把共同视野顶点按当前姿态反投影回各设备完整画幅，数 X / Y 方向实际跨越的像素数，不做尺寸除间距的估算；倾斜造成的两端倍率差异自然包含在内。无共同视野时不显示。</p></div></section>
+<div id="printParams" class="panel" style="display:none"></div><section class="panel"><div class="phead"><h2>模型与使用说明</h2><span class="small">一阶几何估算</span></div><div class="body note"><p><b>针孔近似与薄透镜：</b>光心后移量沿光轴计量，正值表示位于镜头前端后方。针孔模式用该位置作投影中心；理想薄透镜模式将它近似为物方主面。实际复合镜头需标定。</p><p><b>已知参考倍率：</b>在给定工作距离用倍率确定画幅，不使用光心后移量。名义焦距只作记录；离开参考平面的视野仍采用等效中心投影近似。</p><p><b>TR：</b>TR=投射距离/正投影宽度，联动公式 f投影=TR×DMD有效宽。倾斜平面的实际梯形包络另行计算。</p><p><b>工作平面：</b>从相机镜头前端沿光轴输入到近端、中间和远端平面的距离。切换时保持参考成像状态，仅计算几何视野。</p><p><b>视场角：</b>X × Y 为镜头出射的幅面角，由幅面边缘与焦距的 atan 计算，包含幅面偏心，与工作距离和安装倾角无关。ROI 开窗与全幅不同时分别给出两组数值；相机取当前成像模型的有效焦距，光机取 TR 联动后的等效焦距。</p><p><b>物方像素间距：</b>正视矩形按各设备沿光轴距离、有效焦距与像素尺寸估算，忽略工作平面倾斜造成的局部倍率变化；考虑倾斜时把像素两条边缘投射到当前工作平面取实长，分别采样左侧、光轴列、右侧。单位 mm/像素，属于几何点间距，不是测量精度。</p><p><b>四角投影余量：</b>相机 ROI 四角到光机投影边界的最短距离，沿当前工作平面按有限边界线段测量；正值为投影内余量，贴边为 0，负值为超出。双目分别判断左右相机，不要求共同视野覆盖单侧 ROI。</p><p><b>共同视野占用像素：</b>把共同视野顶点按当前姿态反投影回各设备完整画幅，数 X / Y 方向实际跨越的像素数，不做尺寸除间距的估算；倾斜造成的两端倍率差异自然包含在内。无共同视野时不显示。</p></div></section>
 
 </div></main><div class="bottom">3D 视觉视野规划 v10.0 · 完全离线运行 · 长度 mm / 面积 mm² / 角度 °</div>
 <script>
@@ -515,6 +571,23 @@ function coverageClearance(camera,projector){
   return{index,point:[...point],inside,...nearest,signedDistance:inside?nearest.distance:-nearest.distance};
  });
  const covered=corners.every(c=>c.inside),minimumSigned=Math.min(...corners.map(c=>c.signedDistance));return{covered,corners,minimum:covered?minimumSigned:null,minimumSigned,maxOverflow:Math.max(0,-minimumSigned),outsideCount:corners.filter(c=>!c.inside).length,tolerance};
+}
+function solveWorkPlanes(s){
+ const wd=workingDistance(s);
+ const middle={key:'middle',label:'中间',wd,z:s.plane,result:solve(s)};
+ const planes=[middle],errors={},range=s.depthRange||{};
+ for(const [key,label] of [['near','近端'],['far','远端']]){
+  if(range[key]===undefined||range[key]==='')continue;
+  try{
+   const distance=Number(range[key]);
+   number(distance,label+'工作距离',0.000001,1e7);
+   if(key==='near'?distance>=wd:distance<=wd)throw Error(key==='near'?'必须小于中间工作距离':'必须大于中间工作距离');
+   const z=planeAtDistance(s,distance);
+   const plane={key,label,wd:distance,z,result:solve({...s,plane:z})};
+   if(key==='near')planes.unshift(plane);else planes.push(plane);
+  }catch(e){errors[key]=label+'：'+e.message;}
+ }
+ return {planes,errors};
 }
 function solve(s){const r=s.scene==='stereo'?solveStereo(s):solveMono(s);r.clearance={camera:coverageClearance(r.active.points,r.projector.points)};if(s.scene==='stereo')r.clearance.camera2=coverageClearance(r.active2.points,r.projector.points);return r;}
 
@@ -776,15 +849,16 @@ const defaults={version:10,pixelMode:'normal',wdMode:'normal',baselineMode:'x',b
 
 const cloneSetup=x=>JSON.parse(JSON.stringify(x));
 defaults.scene='mono';defaults.camera2=cloneSetup(defaults.camera);defaults.roi2=cloneSetup(defaults.roi);
+defaults.depthRange={near:'',far:'',selected:'middle'};
 defaults.stereoMount={leftGap:66.4,rightGap:66.4,leftZ:0,rightZ:0};
-const setupKeys=['pixelMode','wdMode','baselineMode','baseline','mountZ','plane','camera','projector','roi','camera2','roi2','stereoMount'];
+const setupKeys=['pixelMode','wdMode','baselineMode','baseline','mountZ','plane','depthRange','camera','projector','roi','camera2','roi2','stereoMount'];
 const monoSetup=Object.fromEntries(setupKeys.map(k=>[k,cloneSetup(defaults[k])]));
 const stereoSetup=cloneSetup(monoSetup);
 stereoSetup.camera.yaw=Math.atan(stereoSetup.stereoMount.leftGap/stereoSetup.camera.wd)*180/Math.PI;
 stereoSetup.camera2.yaw=-stereoSetup.camera.yaw;stereoSetup.projector.yaw=0;
 defaults.setups={mono:monoSetup,stereo:stereoSetup};
 
-const api={depthOfField,diffractionSpot,coverageClearance,pixelSpacing,pixelSampling,fovAngles,pixelSpan,basis,area,intersect,metrics,solve,stereoReference,setupKeys,footprint,slice,sliceSegment,frameDimensions,missingEdges,subtractConvex,regionDimensions,overlapDimensions,coverageRegions,defaults,distance,height,workingDistance,planeAtDistance,cameraOptics,projectorOptics,parseTable,interpolate};if(typeof module!=='undefined'&&module.exports)module.exports=api;root.FOV=api;
+const api={depthOfField,diffractionSpot,coverageClearance,pixelSpacing,pixelSampling,fovAngles,pixelSpan,basis,area,intersect,metrics,solve,solveWorkPlanes,stereoReference,setupKeys,footprint,slice,sliceSegment,frameDimensions,missingEdges,subtractConvex,regionDimensions,overlapDimensions,coverageRegions,defaults,distance,height,workingDistance,planeAtDistance,cameraOptics,projectorOptics,parseTable,interpolate};if(typeof module!=='undefined'&&module.exports)module.exports=api;root.FOV=api;
 })(typeof globalThis!=='undefined'?globalThis:this);
 
 
@@ -793,6 +867,8 @@ const api={depthOfField,diffractionSpot,coverageClearance,pixelSpacing,pixelSamp
 const $=id=>document.getElementById(id),clone=x=>JSON.parse(JSON.stringify(x));
 let sensorLastCounts={nx:1600,ny:1200},sensorLastCounts2={nx:1600,ny:1200};
 let state=clone(FOV.defaults),result=null,view='3d',az=-.65,el=.58;
+let workPlanes=[],currentPlane=null;
+const endpointInputs=[['near','nearWD'],['far','farWD']];
 const fmt=(x,n=2)=>Number.isFinite(x)?x.toLocaleString('zh-CN',{minimumFractionDigits:n,maximumFractionDigits:n}):'—';
 const displayNumber=(v,p='')=>{if(typeof v!=='number')return v;if(!Number.isFinite(v))return '';if(p.includes('.dof.'))return v===0?'':v;const places=/\.mag$/.test(p)?7:/\.tr$/.test(p)?5:/\.pixelPitch$/.test(p)?4:/^camera2?\.(w|h)$/.test(p)?5:/^roi2?\./.test(p)?0:2;const rounded=Number(v.toFixed(places));return rounded===0&&v!==0?Number(v.toPrecision(2)):rounded;};
 const get=(o,p)=>p.split('.').reduce((a,k)=>a[k],o);
@@ -841,7 +917,24 @@ const rightWDInput=document.querySelector('[data-path="camera2.wd"]');rightWDInp
 function syncMountWD(){let z;if(isStereo()){const ref=FOV.stereoReference(state);z=ref.projectorH;state.camera2.wd=ref.rightWD;const e=document.querySelector('[data-path="camera2.wd"]');if(e)e.value=Number.isFinite(ref.rightWD)?displayNumber(ref.rightWD):'';}else z=FOV.height(state.camera,state.wdMode)+state.mountZ;const c=-FOV.basis(state.projector).axis[2];state.projector.wd=state.wdMode==='axis'?z/c:z;$('projectorNormalWD').value=Number.isFinite(z)?displayNumber(z):'';$('projectorAxisWD').value=Number.isFinite(z/c)?displayNumber(z/c):'';}
 
 function syncOtherWD(force=false){const e=$('otherWD'),d=FOV.workingDistance(state);if(force||e!==document.activeElement)e.value=Number.isFinite(d)?displayNumber(d):'';}
-function sync(){normalizeInputs(state);syncMountWD();document.querySelectorAll('[data-path]').forEach(e=>e.value=displayNumber(get(state,e.dataset.path),e.dataset.path));syncOtherWD(true);sensorLastCounts={nx:state.roi.nx,ny:state.roi.ny};sensorLastCounts2={nx:state.roi2.nx,ny:state.roi2.ny};sensorInfo();sensorInfo(2);linkProjector('');modelControls();}
+function syncWorkPlanes(errors={}){
+ for(const [key,id] of endpointInputs){
+  const input=$(id),error=errors[key];
+  input.setAttribute('aria-invalid',String(Boolean(error)));
+  if(input!==document.activeElement)input.value=state.depthRange[key];
+ }
+ $('depthError').textContent=Object.values(errors).join('。');
+ $('depthError').hidden=!Object.keys(errors).length;
+ for(const button of $('depthTabs').querySelectorAll('[data-depth]')){
+  const key=button.dataset.depth,active=currentPlane?.key===key;
+  button.disabled=!workPlanes.some(plane=>plane.key===key);
+  button.classList.toggle('active',active);
+  button.setAttribute('aria-pressed',String(active));
+ }
+ $('activeDepthLabel').textContent=currentPlane?planeLabel(currentPlane):'';
+}
+function planeLabel(plane){return plane.label+' · WD '+fmt(plane.wd)+' mm';}
+function sync(){normalizeInputs(state);syncMountWD();document.querySelectorAll('[data-path]').forEach(e=>e.value=displayNumber(get(state,e.dataset.path),e.dataset.path));syncOtherWD(true);for(const [key,id] of endpointInputs)$(id).value=state.depthRange[key];sensorLastCounts={nx:state.roi.nx,ny:state.roi.ny};sensorLastCounts2={nx:state.roi2.nx,ny:state.roi2.ny};sensorInfo();sensorInfo(2);linkProjector('');modelControls();}
 function toast(t){$('toast').textContent=t;}
 function mergeKnown(input,template=FOV.defaults){if(!input||typeof input!=='object'||Array.isArray(input))throw Error('方案格式无效');const out=clone(template);for(const k of Object.keys(template)){if(!(k in input))continue;if(typeof template[k]==='object')out[k]=mergeKnown(input[k],template[k]);else{if(typeof input[k]!==typeof template[k])throw Error('方案参数类型无效：'+k);out[k]=input[k];}}return out;}
 
@@ -936,6 +1029,14 @@ $('sceneMode').addEventListener('change',e=>switchScene(e.target.value));
 $('fullROI2').onclick=()=>{Object.assign(state.roi2,{rw:state.roi2.nx,rh:state.roi2.ny,rx:0,ry:0});sync();update();};
 $('copyLeftCamera').onclick=()=>{state.camera2=clone(state.camera);state.camera2.yaw=-state.camera.yaw;state.camera2.ox=-state.camera.ox;state.roi2=clone(state.roi);sync();update();toast('已复制左相机镜头、Sensor 和 ROI，X–Z 倾角镜像');};
 $('otherWD').addEventListener('input',e=>{const d=e.target.value===''?NaN:Number(e.target.value);try{state.plane=FOV.planeAtDistance(state,d);}catch(err){state.plane=NaN;}update();});
+for(const [key,id] of endpointInputs)$(id).addEventListener('input',e=>{state.depthRange[key]=e.target.value;update();});
+$('depthTabs').addEventListener('click',e=>{
+ const button=e.target.closest('button[data-depth]');
+ if(!button||button.disabled||button.dataset.depth===currentPlane?.key)return;
+ state.depthRange.selected=button.dataset.depth;
+ selectedRegionId=null;
+ update();
+});
 $('reset').onclick=()=>{state=clone(FOV.defaults);sync();update();toast('已恢复示例参数');};
 $('fullROI').onclick=()=>{Object.assign(state.roi,{rw:state.roi.nx,rh:state.roi.ny,rx:0,ry:0});sync();update();};
 $('view3d').onclick=()=>{view='3d';if(isStereo())defaultLayoutView();drawLayout();};$('viewSide').onclick=()=>{view='side';drawLayout();};
@@ -1106,7 +1207,112 @@ function drawFootprint(){
  out+=drawRegionEdges(r.regions.camera,st,W,H);
  single.svg.innerHTML=out;
 }
-function drawMonoLayout(){const {svg,W,H}=initSvg('layout');$('view3d').classList.toggle('active',view==='3d');$('viewSide').classList.toggle('active',view==='side');$('layoutCaption').textContent=view==='3d'?'拖动旋转视角；细线为边界光线，虚线为光轴；两个光心之间为直线基线。':'沿 Y 方向投影到 X–Z 的侧视图，全部角点光线均投影显示；不是 Y=0 截面。';if(!result){svg.innerHTML='';return;}const r=result,z=state.plane;
+function depthSectionSegment(points,z){
+ const segment=FOV.sliceSegment(points,0,1);
+ return segment?.map(([x])=>[x,z])||null;
+}
+function sectionDimension(a,b,color){
+ const length=Math.hypot(b[0]-a[0],b[1]-a[1]);
+ if(length<1)return '';
+ const ux=(b[0]-a[0])/length,uy=(b[1]-a[1])/length,tip=Math.min(6,length/3);
+ let out=line(a,b,color);
+ for(const [q,sign] of [[a,1],[b,-1]]){
+  const base=[q[0]+sign*tip*ux,q[1]+sign*tip*uy];
+  out+=line(q,[base[0]-uy*tip*.48,base[1]+ux*tip*.48],color)+line(q,[base[0]+uy*tip*.48,base[1]-ux*tip*.48],color);
+ }
+ return out;
+}
+function sectionTilt(origin,axis,radius,color){
+ const angle=Math.atan2(axis[0],-axis[2]),degrees=angle*180/Math.PI;
+ const normal=[origin[0],origin[1]+radius],tip=[origin[0]+radius*Math.sin(angle),origin[1]+radius*Math.cos(angle)];
+ const labelRadius=radius+11,label=[origin[0]+labelRadius*Math.sin(angle/2)+(angle<0?-5:5),origin[1]+labelRadius*Math.cos(angle/2)+4];
+ const isVertical=Math.abs(degrees)<.005;
+ let out=line(origin,[normal[0],normal[1]+8],'#9caab7','2 3');
+ if(!isVertical)out+='<path d="M '+normal.join(' ')+' A '+radius+' '+radius+' 0 0 '+(angle<0?1:0)+' '+tip.join(' ')+'" fill="none" stroke="'+color+'" stroke-width="1.4"/>';
+ return out+text(label,(isVertical?'0':fmt(degrees,1))+'°','annot',angle<0?'end':'start',color);
+}
+function drawDepthSection(depthSections){
+ const {svg,W,H}=initSvg('layout');
+ $('view3d').classList.remove('active');$('viewSide').classList.add('active');
+ $('layoutCaption').textContent='X–Z 光路截面（Y=0）。实线为截面边界，彩色虚线为光轴投影。角度相对工作平面法线；WD 沿相机光轴自镜头前端量取'+(isStereo()?'（左相机）':'')+'。绿色为共同覆盖。';
+ const sections=depthSections.filter(section=>section.result);
+ if(!sections.length){svg.innerHTML='';return;}
+ const near=sections[0],far=sections[sections.length-1],selected=sections.find(section=>section.active)||sections.find(section=>section.key==='middle')||near;
+ const r=far.result,farZ=far.z,side=q=>[q[0],q[2]];
+ const devices=[
+  {full:r.camera,roi:r.active,name:isStereo()?'左相机':'相机光心',color:'#007aff',fill:'#007aff12'},
+  {full:r.projector,roi:r.projector,name:'光机',color:'#bd6c0d',fill:'#ff950014'},
+  ...(isStereo()?[{full:r.camera2,roi:r.active2,name:'右相机',color:'#af52de',fill:'#af52de12'}]:[])
+ ].map(device=>({
+  ...device,origin:side(device.full.pos),fullEnds:depthSectionSegment(device.full.points,farZ),
+  roiEnds:depthSectionSegment(device.roi.points,farZ),axisEnd:[device.full.axisHit[0],farZ]
+ }));
+ const cameraFront=r.camera.pos.map((v,i)=>v+r.camera.basis.axis[i]*r.optical.originOffset);
+ const left=W<380?68:88,plotWidth=Math.max(80,W-left-34);
+ const framePoints=devices.flatMap(device=>[device.origin,device.axisEnd,...(device.fullEnds||[])]);
+ const t=fit([...framePoints,side(cameraFront)],plotWidth,H,Math.min(W<350?26:54,plotWidth*.24,H*.22));
+ const p=q=>{const qPlot=t.p(q);return [qPlot[0]+left,qPlot[1]];};
+ const selectedY=p([0,selected.z])[1],farY=p([0,farZ])[1],dimX=W-13;
+ const neutral='#92a1af',dark='#52677c',green='#008b72',overlap=depthSectionSegment(selected.result.overlap,selected.z);
+ let out='<g class="section-planes">';
+ for(const section of sections.filter(section=>section!==selected).concat(selected)){
+  const y=p([0,section.z])[1],active=section===selected;
+  out+='<g data-work-plane="'+section.key+'" data-active="'+active+'">'+line([left-8,y],[dimX-5,y],active?dark:neutral,active?'':'4 4',active?1.4:1)+'</g>';
+ }
+ out+='</g><g class="section-cones">';
+ for(const device of devices)if(device.fullEnds)out+=poly([device.origin,...device.fullEnds].map(p),device.fill,'none');
+ // Each participating cone is triangular in Y=0. Clip their intersection to the working depth interval.
+ const wedges=devices.map(device=>device.roiEnds?[device.origin,...device.roiEnds]:[]);
+ if(wedges.every(wedge=>wedge.length)&&near.z>farZ){
+  const strip=[[t.loX,farZ],[t.hiX,farZ],[t.hiX,near.z],[t.loX,near.z]];
+  const common=wedges.reduce((area,wedge)=>FOV.intersect(area,wedge),strip);
+  if(common.length)out+=poly(common.map(p),'#00a68a32','none');
+ }
+ for(const device of devices){
+  const origin=p(device.origin);
+  for(const ray of device.fullEnds||[])out+=line(origin,p(ray),device.color,'',1.45);
+  if(device.roi!==device.full)for(const ray of device.roiEnds||[]){
+   if(!device.fullEnds?.some(full=>Math.abs(full[0]-ray[0])<1e-7))out+=line(origin,p(ray),device.color,'2 3',1);
+  }
+  out+=line(origin,p(device.axisEnd),device.color,'6 4',1.3);
+ }
+ if(overlap){
+  const [a,b]=overlap.map(p),width=overlap[1][0]-overlap[0][0];
+  if(width>1e-8)out+=line(a,b,green,'',3)+text([(a[0]+b[0])/2,W<350?farY+19:selectedY+(farY-selectedY<19?17:-8)],'共同宽 '+fmt(width)+' mm','annot','middle',green);
+ }
+ out+='</g><g class="section-installation">';
+ const origins=devices.map(device=>p(device.origin)),labelY=Math.min(...origins.map(origin=>origin[1]))-11;
+ const baselines=isStereo()?[[0,1,'左 B',r.baselines.left],[1,2,'右 B',r.baselines.right]]:[[0,1,'B',r.baseline]];
+ for(const [i,j,name,value] of baselines){
+  const a=origins[i],b=origins[j],offset=isStereo()&&i===1?36:25,da=[a[0],a[1]-offset],db=[b[0],b[1]-offset];
+  const x=Math.max(62,Math.min(W-62,(da[0]+db[0])/2));
+  const y=Math.max(11,Math.min(da[1],db[1])-5);
+  out+=line(a,da,neutral,'2 3')+line(b,db,neutral,'2 3')+sectionDimension(da,db,dark);
+  out+=text([x,y],name+' '+fmt(value)+' mm','annot','middle',dark);
+ }
+ devices.forEach((device,i)=>{
+  const q=origins[i],anchor=isStereo()?['end','middle','start'][i]:q[0]<=origins[1-i][0]?'end':'start';
+  const x=anchor==='middle'?q[0]:anchor==='end'?Math.max(49,q[0]-8):Math.min(W-49,q[0]+8);
+  const angleRadius=Math.min(38+i*18,Math.max(14,(farY-q[1])*.68));
+  out+=mark(q,device.color,4.3)+text([x,Math.max(22,labelY)],device.name,'annot',anchor,device.color);
+  out+=sectionTilt(q,device.full.basis.axis,angleRadius,device.color);
+ });
+ const front=p(side(cameraFront)),frontHeight=cameraFront[2]-selected.z;
+ out+=line([front[0],front[1]],[dimX,front[1]],neutral,'3 4')+line([dimX-6,selectedY],[dimX+3,selectedY],neutral);
+ out+=sectionDimension([dimX,front[1]],[dimX,selectedY],dark);
+ out+='<g transform="translate('+(dimX-6)+' '+((front[1]+selectedY)/2)+') rotate(-90)">'+text([0,0],'镜头前端垂距 '+fmt(frontHeight)+' mm','annot','middle',dark)+'</g>';
+ out+='</g><g class="section-plane-labels">';
+ const labelYs=sections.map(section=>p([0,section.z])[1]+4);
+ for(let i=1;i<labelYs.length;i++)labelYs[i]=Math.max(labelYs[i],labelYs[i-1]+17);
+ for(let i=labelYs.length-1;i>=0;i--)labelYs[i]=Math.min(labelYs[i],i===labelYs.length-1?H-8:labelYs[i+1]-17);
+ sections.forEach((section,i)=>{
+  const y=p([0,section.z])[1],labelY=labelYs[i],color=section===selected?dark:'#728496';
+  out+=line([left-8,y],[left-13,labelY-4],color);
+  out+=text([7,labelY],section.label+' '+fmt(section.wd)+' mm',section===selected?'annot':'tick','start',color);
+ });
+ svg.innerHTML=out+'</g>';
+}
+function drawMonoLayout(){const {svg,W,H}=initSvg('layout');$('view3d').classList.toggle('active',view==='3d');$('viewSide').classList.toggle('active',view==='side');$('layoutCaption').textContent=view==='3d'?'拖动旋转视角；细线为边界光线，虚线为光轴；两个光心之间为直线基线。':'沿 Y 方向投影到 X–Z 的侧视图，全部角点光线均投影显示；不是 Y=0 截面。';if(!result){svg.innerHTML='';return;}const r=result,z=currentPlane.z;
 const proj=q=>view==='side'?[q[0],q[2]]:[q[0]*Math.cos(az)-q[1]*Math.sin(az),(q[0]*Math.sin(az)+q[1]*Math.cos(az))*Math.sin(el)+q[2]*Math.cos(el)];
 const all=[r.camera.pos,r.projector.pos,...r.camera.points.map(p=>[...p,z]),...r.projector.points.map(p=>[...p,z])];const t=fit(all.map(proj),W,H,60),p=q=>t.p(proj(q));let out=view==='side'?grid(t,W,H,'X (mm)','Z (mm)'):'';
 const planeBounds=FOV.metrics([...r.camera.points,...r.projector.points]).bounds;
@@ -1117,11 +1323,12 @@ const a=p(r.camera.pos),b=p(r.projector.pos);out+=mark(a,'#007aff',6)+mark(b,'#f
 if(Math.abs(r.optical.originOffset)>1e-8){const front=r.camera.pos.map((v,i)=>v+r.camera.basis.axis[i]*r.optical.originOffset),q=p(front),leader=[q[0]-44,q[1]+23];out+=mark(q,'#6b7888',3)+line(q,leader,'#96a4b4','2 2')+text([leader[0]-3,leader[1]+4],'镜头前端','annot','end','#617083');}
 if(view==='3d'){const origin=[46,H-36],k=22;for(const [q,label,c] of [[[k,0,0],'X','#7994a5'],[[0,k,0],'Y','#7994a5'],[[0,0,k],'Z','#7994a5']]){let d=proj(q),end=[origin[0]+d[0],origin[1]-d[1]];out+=line(origin,end,c)+text([end[0],end[1]-5],label);}}svg.innerHTML=out;}
 
-function drawLayout(){
+function drawLayout(depthSections=workPlanes){
  $('layout').style.touchAction=view==='3d'?'none':'pan-y';
+ if(view==='side')return drawDepthSection(depthSections);
  if(!isStereo())return drawMonoLayout();
  const {svg,W,H}=initSvg('layout');$('view3d').classList.toggle('active',view==='3d');$('viewSide').classList.toggle('active',view==='side');$('layoutCaption').textContent=view==='3d'?'光机居中、左右各一台相机；每台设备四条实线连接全幅四个角点，虚线为光轴。拖动旋转；点击“空间示意”恢复视角。':'X–Z侧视投影；各设备四条角点连线均保留，前后角点的投影可能重叠。';if(!result){svg.innerHTML='';return;}
- const r=result,z=state.plane,devices=[{d:r.projector,color:'#ff9500',fill:'#ff950012',name:'光机',key:'projector'},{d:r.camera,color:'#007aff',fill:'#007aff0a',name:'左相机',key:'left'},{d:r.camera2,color:'#af52de',fill:'#af52de0a',name:'右相机',key:'right'}];
+ const r=result,z=currentPlane.z,devices=[{d:r.projector,color:'#ff9500',fill:'#ff950012',name:'光机',key:'projector'},{d:r.camera,color:'#007aff',fill:'#007aff0a',name:'左相机',key:'left'},{d:r.camera2,color:'#af52de',fill:'#af52de0a',name:'右相机',key:'right'}];
  const project=q=>view==='side'?[q[0],q[2]]:[q[0]*Math.cos(az)-q[1]*Math.sin(az),(q[0]*Math.sin(az)+q[1]*Math.cos(az))*Math.sin(el)+q[2]*Math.cos(el)];
  const all=devices.flatMap(({d})=>[d.pos,...d.points.map(p=>[...p,z])]),t=fit(all.map(project),W,H,64),p=q=>t.p(project(q)),b=FOV.metrics(devices.flatMap(({d})=>d.points)).bounds;
  let out=view==='side'?grid(t,W,H,'X (mm)','Z (mm)'):poly([[b.xmin,b.ymin,z],[b.xmax,b.ymin,z],[b.xmax,b.ymax,z],[b.xmin,b.ymax,z]].map(p),'#f8fafc','#dfe6ee');
@@ -1144,7 +1351,7 @@ let drag=null;$('layout').addEventListener('pointerdown',e=>{if(view!=='3d')retu
 function metricRows(){if(!result)return [];const r=result;return [['相机完整 Sensor',r.camera.metrics,null],['相机 ROI',r.active.metrics,r.cameraCoverage],['光机投影',r.projector.metrics,r.projectorCoverage],['共同视野',r.metrics,null]];}
 function cameraNote(d,opt){const names={pinhole:'针孔近似',thin:'有限共轭薄透镜',magnification:'已知参考倍率'};return names[opt.model]+'；参考前端轴向距离 '+fmt(opt.frontAxisWD)+' mm；等效投影尺度 '+fmt(opt.effectiveF,4)+' mm；光心后移 '+fmt(opt.originOffset)+' mm。'+(opt.model==='magnification'?'已知倍率 '+fmt(d.mag,6)+' @ '+fmt(d.magWD)+' mm，后移量不参与计算。':'');}
 function fovNote(dev,f,roi){const d={...dev,f},full=FOV.fovAngles(d),a=roi?FOV.fovAngles(d,roi):null,cropped=a&&(Math.abs(a.x-full.x)>1e-6||Math.abs(a.y-full.y)>1e-6);return '视场角 X × Y：'+(cropped?'全幅 ':'')+fmt(full.x,1)+'° × '+fmt(full.y,1)+'°'+(cropped?'；ROI '+fmt(a.x,1)+'° × '+fmt(a.y,1)+'°':'');}
-function overlapPixelSpans(){const r=result;if(!r||!r.overlap.length)return [];const stereo=isStereo(),proj=FOV.projectorOptics(state.projector),out=[{name:stereo?'左相机':'2D 相机',...FOV.pixelSpan({...state.camera,f:r.optical.effectiveF},r.camera.pos,state.plane,r.overlap,state.roi.nx,state.roi.ny)}];if(stereo)out.push({name:'右相机',...FOV.pixelSpan({...r.rightDevice,f:r.optical2.effectiveF},r.camera2.pos,state.plane,r.overlap,state.roi2.nx,state.roi2.ny)});out.push({name:'光机',...FOV.pixelSpan(proj,r.projector.pos,state.plane,r.overlap,state.projector.nx,state.projector.ny)});return out;}
+function overlapPixelSpans(){const r=result;if(!r||!r.overlap.length)return [];const stereo=isStereo(),proj=FOV.projectorOptics(state.projector),out=[{name:stereo?'左相机':'2D 相机',...FOV.pixelSpan({...state.camera,f:r.optical.effectiveF},r.camera.pos,currentPlane.z,r.overlap,state.roi.nx,state.roi.ny)}];if(stereo)out.push({name:'右相机',...FOV.pixelSpan({...r.rightDevice,f:r.optical2.effectiveF},r.camera2.pos,currentPlane.z,r.overlap,state.roi2.nx,state.roi2.ny)});out.push({name:'光机',...FOV.pixelSpan(proj,r.projector.pos,currentPlane.z,r.overlap,state.projector.nx,state.projector.ny)});return out;}
 function overlapPixelNote(){const o=overlapPixelSpans();return o.length?'共同视野占用像素 X × Y：'+o.map(d=>d.name+' ≈ '+fmt(d.x,0)+' × '+fmt(d.y,0)+' px').join('；'):'';}
 const clearanceOrder=[[3,'左上'],[2,'右上'],[0,'左下'],[1,'右下']];
 function clearanceValue(c){return (c.inside?'':'−')+(c.distance>0&&c.distance<.005?'<0.01':fmt(c.distance));}
@@ -1162,7 +1369,24 @@ function renderPixelSampling(){
 }
 function update(){
  normalizeInputs(state);syncMountWD();syncOtherWD();modelControls();sensorInfo();sensorInfo(2);
- try{for(const [name,d] of [['左/单目相机',state.camera],...(isStereo()?[['右相机',state.camera2]]:[])])if(!Number.isFinite(d.pixelPitch)||d.pixelPitch<=0)throw Error(name+'像元大小必须为正数');if(!Number.isFinite(FOV.workingDistance(state))||FOV.workingDistance(state)<=0)throw Error('其他工作距离必须为正数');result=FOV.solve(state);samplingResult=FOV.pixelSampling(state,result);$('error').hidden=true;}catch(e){result=null;samplingResult=null;$('error').hidden=false;$('error').textContent=e.message+'。已清空计算结果。';}
+ let planeErrors={};
+ try{
+  for(const [name,d] of [['左/单目相机',state.camera],...(isStereo()?[['右相机',state.camera2]]:[])])if(!Number.isFinite(d.pixelPitch)||d.pixelPitch<=0)throw Error(name+'像元大小必须为正数');
+  if(!Number.isFinite(FOV.workingDistance(state))||FOV.workingDistance(state)<=0)throw Error('中间工作距离必须为正数');
+  const {planes,errors}=FOV.solveWorkPlanes(state);
+  planeErrors=errors;
+  currentPlane=planes.find(plane=>plane.key===state.depthRange.selected)||planes.find(plane=>plane.key==='middle');
+  workPlanes=planes;
+  currentPlane.active=true;
+  result=currentPlane.result;
+  samplingResult=FOV.pixelSampling({...state,plane:currentPlane.z},result);
+  $('error').hidden=true;
+ }catch(e){
+  workPlanes=[];currentPlane=null;result=null;samplingResult=null;
+  $('error').hidden=false;
+  $('error').textContent=e.message+'。已清空计算结果。';
+ }
+ syncWorkPlanes(planeErrors);
  renderCameraDepth();
  $('modelInfo').hidden=!result;
  for(const id of ['save','csv','svgExport','print'])$(id).disabled=!result;document.querySelectorAll('.plot-export').forEach(b=>b.disabled=!result);
@@ -1173,15 +1397,15 @@ function update(){
  $('projectorInfo').textContent='TR = '+fmt(r.tr,5)+'；f投影 = TR × DMD宽。左侧两项距离取参考平面；当前投影沿光轴距离 '+fmt(r.projector.axisWD)+' mm。更换 DMD 保持焦距并更新 TR。';
  $('modelInfo').textContent=stereo?'双目：左相机 + 中置光机 + 右相机；3D 视野为两台相机 ROI 与光机投影的三者交集。':'单目：一台相机 + 一台光机；3D 视野为相机 ROI 与光机投影的交集。';
  const devices=[[leftName,state.camera,state.roi],...(stereo?[['右相机',state.camera2,state.roi2]]:[])];
- $('printParams').innerHTML='<strong>当前方案 · '+(stereo?'双目':'单目')+'</strong><br>其他工作距离：'+fmt(FOV.workingDistance(state))+' mm（'+leftName+'镜头前端沿光轴）。<br>'+devices.map(([n,d,roi])=>n+'：焦距 '+fmt(d.f)+' mm；Sensor '+fmt(d.w)+' × '+fmt(d.h)+' mm；参考 WD '+fmt(d.wd)+' mm；X–Z倾角 '+fmt(d.yaw)+'°；ROI '+roi.rw+' × '+roi.rh+' px。').join('<br>')+'<br>光机焦距 '+fmt(state.projector.f)+' mm；TR '+fmt(r.tr,5)+'；X–Z倾角 '+fmt(state.projector.yaw)+'°。';
+ $('printParams').innerHTML='<strong>当前方案 · '+(stereo?'双目':'单目')+'</strong><br>'+planeLabel(currentPlane)+'（'+leftName+'镜头前端沿光轴）。<br>'+devices.map(([n,d,roi])=>n+'：焦距 '+fmt(d.f)+' mm；Sensor '+fmt(d.w)+' × '+fmt(d.h)+' mm；参考 WD '+fmt(d.wd)+' mm；X–Z倾角 '+fmt(d.yaw)+'°；ROI '+roi.rw+' × '+roi.rh+' px。').join('<br>')+'<br>光机焦距 '+fmt(state.projector.f)+' mm；TR '+fmt(r.tr,5)+'；X–Z倾角 '+fmt(state.projector.yaw)+'°。';
  const projOptics=FOV.projectorOptics(state.projector);
  const pxNote=overlapPixelNote();
  const cameraSummary=(d,roi,note)=>frameSummary(d)+'<div class="frame-note">ROI '+roi.rw+' × '+roi.rh+' px；完整 Sensor 包络 '+fmt(d.metrics.width)+' × '+fmt(d.metrics.height)+' mm。'+note+'</div>';
  $('cameraOutput').innerHTML=cameraSummary(r.active,state.roi,fovNote(state.camera,r.optical.effectiveF,state.roi));$('cameraOutput2').innerHTML=stereo?cameraSummary(r.active2,state.roi2,fovNote(r.rightDevice,r.optical2.effectiveF,state.roi2)):'';$('projectorOutput').innerHTML=frameSummary(r.projector)+'<div class="frame-note">'+fovNote(projOptics,projOptics.f,null)+'</div>';
  for(const [suffix,key] of [['','camera'],['2','camera2']]){const column=$('clearanceColumn'+suffix);column.style.visibility='visible';column.setAttribute('aria-hidden','false');$('cameraClearance'+suffix).innerHTML=clearanceSummary(key);}
  $('overlapOutput').innerHTML=overlapSummary()+'<div class="frame-note">面积 '+fmt(m.area)+' mm²；'+(stereo?'占左 / 右 ROI '+fmt(r.cameraCoverage*100,1)+'% / '+fmt(r.camera2Coverage*100,1)+'%':'占相机 ROI '+fmt(r.cameraCoverage*100,1)+'%')+'；占光机 '+fmt(r.projectorCoverage*100,1)+'%。'+(stereo?'仅单侧相机可见的部分不计入共同 3D 视野。':'')+(pxNote?pxNote+'（顶点按当前姿态反投影到完整画幅计数）。':'')+'</div>'+missingSummary();
- if(stereo){const sm=state.stereoMount;$('baselineInfo').textContent='光机 X=0；左 / 右相机 X='+fmt(-sm.leftGap)+' / '+fmt(sm.rightGap)+' mm；双目光心距离 '+fmt(r.baseline)+' mm。';$('workingInfo').textContent='当前直线距离：左相机镜头前端 '+fmt(FOV.workingDistance(state))+' mm；右相机镜头前端 '+fmt(r.camera2.axisWD-r.optical2.originOffset)+' mm；光机沿光轴 '+fmt(r.projector.axisWD)+' mm。';}
- else{$('baselineInfo').textContent='实际光心距离 B = '+fmt(r.baseline)+' mm；X 分量 '+fmt(r.bx)+' mm，Z 高度差 '+fmt(r.dz)+' mm。';$('workingInfo').textContent='当前直线工作距离：相机镜头前端 '+fmt(FOV.workingDistance(state))+' mm；光机沿光轴 '+fmt(r.projector.axisWD)+' mm（垂直距离 '+fmt(r.projector.normalWD)+' mm）。';}
+ if(stereo){const sm=state.stereoMount;$('baselineInfo').textContent='光机 X=0；左 / 右相机 X='+fmt(-sm.leftGap)+' / '+fmt(sm.rightGap)+' mm；双目光心距离 '+fmt(r.baseline)+' mm。';$('workingInfo').textContent=currentPlane.label+' · 左相机镜头前端 '+fmt(currentPlane.wd)+' mm；右相机镜头前端 '+fmt(r.camera2.axisWD-r.optical2.originOffset)+' mm；光机沿光轴 '+fmt(r.projector.axisWD)+' mm。';}
+ else{$('baselineInfo').textContent='实际光心距离 B = '+fmt(r.baseline)+' mm；X 分量 '+fmt(r.bx)+' mm，Z 高度差 '+fmt(r.dz)+' mm。';$('workingInfo').textContent=currentPlane.label+' · 相机镜头前端 '+fmt(currentPlane.wd)+' mm；光机沿光轴 '+fmt(r.projector.axisWD)+' mm（垂直距离 '+fmt(r.projector.normalWD)+' mm）。';}
  $('printParams').innerHTML+='<br>'+escapeText($('baselineInfo').textContent)+'<br>'+escapeText($('workingInfo').textContent)+'<br>'+pixelTextRows().map(escapeText).join('<br>');
  let message=m.area?(stereo?'三者共同覆盖：左 ROI '+fmt(r.cameraCoverage*100,1)+'%，右 ROI '+fmt(r.camera2Coverage*100,1)+'%，光机 '+fmt(r.projectorCoverage*100,1)+'%。':'共同覆盖相机 ROI 的 '+fmt(r.cameraCoverage*100,1)+'%，覆盖光机投影的 '+fmt(r.projectorCoverage*100,1)+'%。'):'当前没有共同 3D 视野，请调整间距、倾角或焦距。';if(r.baseline<1e-6)message+=' 相机光心重合，没有三角测量基线。';$('status').textContent=message;$('status').classList.toggle('bad',!m.area||r.baseline<1e-6);
  syncRegionChoice();state.setups[state.scene]=setupSnapshot();try{localStorage.setItem('structured-light-fov-v10',JSON.stringify(state));}catch(e){}drawFootprint();drawLayout();
@@ -1191,7 +1415,7 @@ $('csv').onclick=()=>{
  if(!result)return;const r=result,stereo=isStereo(),rows=[['3D 视觉视野规划 v10.0'],['系统模式',stereo?'双目':'单目'],['3D视野定义',stereo?'左 ROI ∩ 右 ROI ∩ 光机投影':'相机 ROI ∩ 光机投影'],['参数','值']];
  function flatten(o,p=''){for(const [k,v] of Object.entries(o)){if(k==='setups')continue;const key=p?p+'.'+k:k;if(v&&typeof v==='object')flatten(v,key);else rows.push([key,v]);}}flatten(state);
  const frames=[[stereo?'左相机完整 Sensor':'相机完整 Sensor',r.camera],[stereo?'左相机 ROI':'相机 ROI',r.active],...(stereo?[['右相机完整 Sensor',r.camera2],['右相机 ROI',r.active2]]:[]),['光机投影',r.projector]];
- rows.push([],['当前直线距离','mm'],['左/单目相机镜头前端',FOV.workingDistance(state)],...(stereo?[['右相机镜头前端',r.camera2.axisWD-r.optical2.originOffset]]:[]),['光机沿光轴',r.projector.axisWD],['光机垂直距离',r.projector.normalWD],[],['范围','X包络 mm','Y包络 mm','面积 mm²']);
+ rows.push([],['当前截面',currentPlane.label],['当前截面 Z (mm)',currentPlane.z],['当前直线距离','mm'],['左/单目相机镜头前端',currentPlane.wd],...(stereo?[['右相机镜头前端',r.camera2.axisWD-r.optical2.originOffset]]:[]),['光机沿光轴',r.projector.axisWD],['光机垂直距离',r.projector.normalWD],[],['范围','X包络 mm','Y包络 mm','面积 mm²']);
  for(const [name,d] of frames)rows.push([name,d.metrics.width,d.metrics.height,d.metrics.area]);if(stereo){const pair=FOV.metrics(r.cameraOverlap);rows.push(['左右相机共同视野（未裁光机）',pair.width,pair.height,pair.area]);}rows.push(['3D共同视野',r.metrics.width,r.metrics.height,r.metrics.area]);
  rows.push([],['范围','形状','左侧实长 mm','中光轴截长 mm','右侧实长 mm','平行侧边间垂距 mm','上斜边 mm','下斜边 mm']);for(const [name,d] of frames){const q=FOV.frameDimensions(d);rows.push([name,q.kind,q.left,q.middle,q.right,q.high,q.upper,q.lower]);}
  rows.push([],['共同视野形状',FOV.overlapDimensions(r.overlap).kind]);for(const v of FOV.overlapDimensions(r.overlap).values)rows.push([v.label,v.value]);
@@ -1200,7 +1424,7 @@ $('csv').onclick=()=>{
  rows.push([],['物方像素间距',samplingResult.mode==='normal'?'正视矩形估算':'考虑倾斜影响'],['设备','位置','全幅像素列','X mm/像素','Y mm/像素']);for(const d of samplingResult.devices)for(const p of d.samples)rows.push([d.name,p.label,p.column||'',p.x,p.y]);
  rows.push([],['视场角（镜头出射角，含偏心与开窗）','X °','Y °']);{const fovRows=[[stereo?'左相机':'2D 相机',state.camera,r.optical.effectiveF,state.roi],...(stereo?[['右相机',r.rightDevice,r.optical2.effectiveF,state.roi2]]:[]),['光机投影',FOV.projectorOptics(state.projector),null,null]];for(const [name,dev,f,roi] of fovRows){const pf=f===null?FOV.projectorOptics(state.projector).f:f;rows.push([name+' 完整画幅',Number(FOV.fovAngles({...dev,f:pf}).x.toFixed(4)),Number(FOV.fovAngles({...dev,f:pf}).y.toFixed(4))]);if(roi){const a=FOV.fovAngles({...dev,f:pf},roi);rows.push([name+' ROI',Number(a.x.toFixed(4)),Number(a.y.toFixed(4))]);}}}
  rows.push([],['共同视野占用像素（顶点反投影到完整画幅）','X px','Y px']);for(const d of overlapPixelSpans())rows.push([d.name,Number(d.x.toFixed(1)),Number(d.y.toFixed(1))]);
- rows.push([],['范围','顶点','X mm','Y mm','Z mm']);for(const [name,d] of frames.concat([['3D共同视野',{points:r.overlap}]]))d.points.forEach((v,k)=>rows.push([name,k+1,...v,state.plane]));rows.push([],['相机四角到投影边界最短距离','mm；正值=余量，负值=超出'],['相机','状态','左上角','右上角','左下角','右下角','最小有符号余量','最大超出']);for(const [key,name] of [['camera',stereo?'左相机':'2D相机'],...(stereo?[['camera2','右相机']]:[])]){const c=r.clearance[key];rows.push([name,c.covered?'完整覆盖':c.outsideCount<4?'部分角点溢出':'四角均在投影外',...clearanceOrder.map(([i])=>c.corners[i].signedDistance),c.minimumSigned,c.maxOverflow]);}csvDownload('视野计算结果.csv',rows);
+ rows.push([],['范围','顶点','X mm','Y mm','Z mm']);for(const [name,d] of frames.concat([['3D共同视野',{points:r.overlap}]]))d.points.forEach((v,k)=>rows.push([name,k+1,...v,currentPlane.z]));rows.push([],['相机四角到投影边界最短距离','mm；正值=余量，负值=超出'],['相机','状态','左上角','右上角','左下角','右下角','最小有符号余量','最大超出']);for(const [key,name] of [['camera',stereo?'左相机':'2D相机'],...(stereo?[['camera2','右相机']]:[])]){const c=r.clearance[key];rows.push([name,c.covered?'完整覆盖':c.outsideCount<4?'部分角点溢出':'四角均在投影外',...clearanceOrder.map(([i])=>c.corners[i].signedDistance),c.minimumSigned,c.maxOverflow]);}csvDownload('视野计算结果.csv',rows);
 };
 const exportStyle='text{font-family:Microsoft YaHei,Arial,sans-serif;font-size:11px;fill:#52677c}.annot{font-weight:600;paint-order:stroke;stroke:white;stroke-width:4px}.tick{font-size:10px;fill:#8291a2}';
 function exportText(x,y,value,size=11,color='#62768a',weight=400){return '<text x="'+x+'" y="'+y+'" style="font-size:'+size+'px;fill:'+color+';font-weight:'+weight+'">'+escapeText(value)+'</text>';}
@@ -1242,9 +1466,12 @@ function exportOverlapSummary(W,y){
  return {content:'<g class="export-overlap-summary">'+out+'</g>',height:cursor-y+4};
 }
 function buildPlotExport(id){
- const svg=$(id),W=svg.clientWidth,H=svg.clientHeight;let content='<g class="export-plot" data-plot="'+id+'">'+svg.innerHTML+'</g>',height=H;
- if(id==='combinedFootprint'){const summary=exportCombinedSummary(W,H+4);content+=summary.content;height=H+4+summary.height;}
- else if(id==='footprint'){const summary=exportOverlapSummary(W,H+4);content+=summary.content;height=H+4+summary.height;}
+ const svg=$(id),W=svg.clientWidth,H=svg.clientHeight;
+ const inset=id==='layout'?0:22;
+ let content=(inset?exportText(12,15,planeLabel(currentPlane)):'')+'<g class="export-plot" data-plot="'+id+'" transform="translate(0,'+inset+')">'+svg.innerHTML+'</g>';
+ let height=H+inset;
+ if(id==='combinedFootprint'){const summary=exportCombinedSummary(W,height+4);content+=summary.content;height+=4+summary.height;}
+ else if(id==='footprint'){const summary=exportOverlapSummary(W,height+4);content+=summary.content;height+=4+summary.height;}
  return {W,H:Math.ceil(height+8),content};
 }
 function exportDocument(W,H,content){return '<svg xmlns="http://www.w3.org/2000/svg" width="'+W+'" height="'+H+'" viewBox="0 0 '+W+' '+H+'"><style>'+exportStyle+'</style><rect width="100%" height="100%" fill="white"/>'+content+'</svg>';}
@@ -1285,14 +1512,15 @@ new ResizeObserver(entries=>{
 const controls=document.createElement('div');controls.className='v10-history';controls.innerHTML='<button id="undoParameters" disabled title="撤销参数修改 · Ctrl+Z">撤销</button><button id="redoParameters" disabled title="重做参数修改 · Ctrl+Y">重做</button>';document.querySelector('.actions').prepend(controls);
 const snapshots=[clone(state)];let historyIndex=0,historyGroup=null,replaying=false;
 const signature=()=>JSON.stringify(state);
+const isWorkDistanceField=el=>['nearWD','otherWD','farWD'].includes(el?.id);
 function historyButtons(){const dirty=signature()!==JSON.stringify(snapshots[historyIndex]);$('undoParameters').disabled=!dirty&&historyIndex===0;$('redoParameters').disabled=dirty||historyIndex>=snapshots.length-1;}
 const forwardUpdate=update;
-update=function(){forwardUpdate();if(!replaying&&result){const next=clone(state);if(JSON.stringify(next)!==JSON.stringify(snapshots[historyIndex])){const el=document.activeElement,group=el?.dataset.path||(el?.id==='otherWD'?'otherWD':null);snapshots.splice(historyIndex+1);if(group&&group===historyGroup&&historyIndex>0)snapshots[historyIndex]=next;else{snapshots.push(next);historyIndex++;if(snapshots.length>101){snapshots.shift();historyIndex--;}}historyGroup=group;}}historyButtons();};
+update=function(){forwardUpdate();if(!replaying&&result){const next=clone(state);if(JSON.stringify(next)!==JSON.stringify(snapshots[historyIndex])){const el=document.activeElement,group=el?.dataset.path||(isWorkDistanceField(el)?el.id:null);snapshots.splice(historyIndex+1);if(group&&group===historyGroup&&historyIndex>0)snapshots[historyIndex]=next;else{snapshots.push(next);historyIndex++;if(snapshots.length>101){snapshots.shift();historyIndex--;}}historyGroup=group;}}historyButtons();};
 function restoreHistory(next){replaying=true;historyGroup=null;state=clone(next);sync();update();replaying=false;historyButtons();}
 $('undoParameters').onclick=()=>{if(signature()!==JSON.stringify(snapshots[historyIndex]))restoreHistory(snapshots[historyIndex]);else if(historyIndex>0)restoreHistory(snapshots[--historyIndex]);toast('已撤销参数修改');};
 $('redoParameters').onclick=()=>{if(historyIndex<snapshots.length-1)restoreHistory(snapshots[++historyIndex]);toast('已重做参数修改');};
 document.addEventListener('focusout',()=>historyGroup=null);
-document.addEventListener('keydown',e=>{if(!(e.ctrlKey||e.metaKey)||e.altKey)return;const el=e.target;if(el.matches('input,textarea')&&!el.dataset.path&&el.id!=='otherWD')return;const k=e.key.toLowerCase();if(k==='z'||k==='y'){e.preventDefault();if(k==='y'||e.shiftKey){if(!$('redoParameters').disabled)$('redoParameters').click();}else if(!$('undoParameters').disabled)$('undoParameters').click();}});
+document.addEventListener('keydown',e=>{if(!(e.ctrlKey||e.metaKey)||e.altKey)return;const el=e.target;if(el.matches('input,textarea')&&!el.dataset.path&&!isWorkDistanceField(el))return;const k=e.key.toLowerCase();if(k==='z'||k==='y'){e.preventDefault();if(k==='y'||e.shiftKey){if(!$('redoParameters').disabled)$('redoParameters').click();}else if(!$('undoParameters').disabled)$('undoParameters').click();}});
 // Move the original panel into a modal, retaining controls and export handlers.
 const dialog=document.createElement('dialog');dialog.id='plotDialog';dialog.innerHTML='<div class="plot-dialog-head"><strong id="plotDialogTitle"></strong><button id="closePlotDialog" autofocus>恢复视图 · Esc</button></div><div id="plotDialogBody"></div>';document.body.append(dialog);let expanded=null,placeholder=null,expandTrigger=null;
 function redraw(){requestAnimationFrame(()=>{drawFootprint();drawLayout();});}
@@ -1438,9 +1666,6 @@ const measureHead=document.createElement('div');measureHead.className='phead';me
 // Keep the complete dimension and clearance block when the field view is expanded.
 let measureSlot=null;combined.querySelector('.plot-zoom').addEventListener('click',()=>{if(combined.closest('#plotDialog')){measureSlot=document.createComment('overview-measure-position');measures.before(measureSlot);combined.append(measures);}});
 document.getElementById('plotDialog').addEventListener('close',()=>{if(measureSlot){measureSlot.replaceWith(measures);measureSlot=null;}});
-// Put the current target distance next to the installation inputs.
-const install=main.querySelector('.install-panel'),installHelp=install.querySelector('details.param-help'),wd=document.getElementById('otherWD'),oldDistance=wd.closest('.panel'),wdLabel=document.createElement('label');wdLabel.id='workingDistanceField';wdLabel.append(document.createTextNode('其他工作距离 (mm)'),wd);install.querySelector('.fields').append(wdLabel);
-for(const id of ['baselineInfo','distanceHint','workingInfo'])installHelp.append(document.getElementById(id));oldDistance.remove();
 // Explanatory notes remain available from one compact help button per panel.
 let noteIndex=0;for(const panel of main.querySelectorAll('.parameter-grid>.panel')){
  const details=[...panel.querySelectorAll('details.param-help')];if(!details.length)continue;
@@ -1452,7 +1677,7 @@ let noteIndex=0;for(const panel of main.querySelectorAll('.parameter-grid>.panel
  const button=document.createElement('button');button.type='button';button.className='parameter-help-trigger';button.textContent='?';button.title='查看参数与联动说明';button.setAttribute('aria-label','查看'+panel.querySelector('h2').textContent+'说明');button.setAttribute('aria-controls',notes.id);button.setAttribute('aria-expanded','false');button.onclick=()=>{notes.hidden=!notes.hidden;button.setAttribute('aria-expanded',String(!notes.hidden));};panel.querySelector('.phead').append(button);
 }
 for(const panel of plots.children){
- const head=panel.querySelector('.phead'),tools=document.createElement('div');tools.className='overview-plot-tools';for(const child of [...head.children])if(child.nodeName!=='H2')tools.append(child);head.append(tools);
+ const head=panel.querySelector('.phead'),tools=document.createElement('div');tools.className='overview-plot-tools';for(const child of [...head.children])if(!child.matches('h2,.overview-plot-title'))tools.append(child);head.append(tools);
  const caption=panel.querySelector(':scope>.caption');if(caption){const help=document.createElement('details');help.className='diagram-help';const summary=document.createElement('summary');summary.textContent='图示说明';help.append(summary,caption);panel.append(help);}
 }
 // Readable display values do not round the underlying parameter or export data.
