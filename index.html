@@ -1267,7 +1267,7 @@ function drawDepthSection(depthSections){
   roiEnds:depthSectionSegment(device.roi.points,farZ),axisEnd:[device.full.axisHit[0],farZ]
  }));
  const cameraFront=r.camera.pos.map((v,i)=>v+r.camera.basis.axis[i]*r.optical.originOffset);
- const left=W<380?68:88,plotWidth=Math.max(80,W-left-34);
+ const left=W<380?78:88,plotWidth=Math.max(80,W-left-34);
  const framePoints=devices.flatMap(device=>[device.origin,device.axisEnd,...(device.fullEnds||[])]);
  const t=fit([...framePoints,side(cameraFront)],plotWidth,H,Math.min(W<350?26:54,plotWidth*.24,H*.22));
  const p=q=>{const qPlot=t.p(q);return [qPlot[0]+left,qPlot[1]];};
