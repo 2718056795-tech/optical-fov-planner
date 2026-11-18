@@ -122,6 +122,8 @@ console.log('== 线激光 ==');
  ok(G.solve(s).laserReachesTop===true,'默认前端同高可覆盖上缘');
  const wide=clone(s);wide.theta=80;
  ok(G.solve(wide).laserReachesTop===false,'大倾角视野上缘超出前端高度时提示');
+ near(G.solve(wide).unreachableHeight,9.954711859306883,1e-8,'80° 示例保留完整几何高度并量出未照射高度');
+ near(G.solve(s).unreachableHeight,0,1e-8,'默认激光前端可照到几何上底');
  throws(()=>G.load({version:10,product:'structuredLight'}),'拒绝面阵方案载入线激光');
  throws(()=>G.load({version:9,product:'lineLaser'}),'拒绝旧版本线激光方案');
  const saved=G.solve(s)&&G.load(JSON.parse(JSON.stringify(s)));
@@ -143,6 +145,27 @@ console.log('== 相机景深 ==');
 }
 
 
+console.log('== 纵向倾斜画幅 ==');
+{
+ const s=clone(FOV.defaults);
+ s.camera.pitch=25;
+ s.pixelMode='tilted';
+ const r=FOV.solve(s),q=FOV.frameDimensions(r.active);
+ ok(q.horizontalBases&&q.kind==='梯形','上下底平行的画幅使用横向底边');
+ near(q.high,r.active.metrics.height,1e-8,'梯形高等于平行上下底的垂直距离');
+ near(q.upper,60.15,.01,'上底按实际边长');
+ near(q.lower,53.25,.01,'下底按实际边长');
+ const samples=FOV.pixelSampling(s,r).devices[0].samples;
+ const [top,bottom]=samples.filter(p=>p.rowSample);
+ near(top.y,.03450,.00001,'顶行按两条像素边缘求物方间距');
+ near(bottom.y,.02705,.00001,'底行按两条像素边缘求物方间距');
+ ok(top.row===1&&bottom.row===s.roi.ny,'纵向取样标记实际行号');
+ s.roi.rh=600;s.roi.ry=300;
+ const crop=FOV.pixelSampling(s).devices[0].samples.filter(p=>p.rowSample);
+ ok(crop[0].row===301&&crop[1].row===900,'裁切后使用 ROI 的首行和末行');
+ s.camera.yaw=10;
+ ok(FOV.frameDimensions(FOV.solve(s).active).kind==='四边形','复合倾斜画幅按实际四边形计量');
+}
 console.log('== 对焦处衍射斑 ==');
 {
  const spot=FOV.diffractionSpot(8,550,5);

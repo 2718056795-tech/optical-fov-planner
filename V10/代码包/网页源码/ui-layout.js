@@ -5,11 +5,14 @@ const main=document.getElementById('structuredMain'),content=main.querySelector(
 plots.before(document.createComment('overview-first'));
 overlap.remove();
 document.getElementById('modelInfo').after(plots);
+const comparison=document.getElementById('depthComparison');
 const measures=document.createElement('section');measures.id='overviewMeasures';measures.className='panel overview-measures';
-const measureHead=document.createElement('div');measureHead.className='phead';measureHead.innerHTML='<h2>视野尺寸与投影余量</h2>';measureHead.append(content.querySelector('.legend'));const summaries=combined.querySelector('.combined-summaries');summaries.setAttribute('aria-live','polite');measures.append(measureHead,summaries);plots.after(overlap,measures);
+const measureHead=document.createElement('div');measureHead.className='phead';measureHead.innerHTML='<h2>视野尺寸与投影余量</h2>';measureHead.append(content.querySelector('.legend'));const summaries=combined.querySelector('.combined-summaries');summaries.setAttribute('aria-live','polite');measures.append(measureHead,summaries);plots.after(comparison,overlap,measures);
 // Keep the complete dimension and clearance block when the field view is expanded.
-let measureSlot=null;combined.querySelector('.plot-zoom').addEventListener('click',()=>{if(combined.closest('#plotDialog')){measureSlot=document.createComment('overview-measure-position');measures.before(measureSlot);combined.append(measures);}});
-document.getElementById('plotDialog').addEventListener('close',()=>{if(measureSlot){measureSlot.replaceWith(measures);measureSlot=null;}});
+combined.querySelector('.plot-zoom').addEventListener('click',()=>{if(combined.closest('#plotDialog'))combined.append(comparison,measures);});
+document.getElementById('plotDialog').addEventListener('close',()=>{
+ if(combined.contains(comparison))plots.after(comparison,overlap,measures);
+});
 // Explanatory notes remain available from one compact help button per panel.
 let noteIndex=0;for(const panel of main.querySelectorAll('.parameter-grid>.panel')){
  const details=[...panel.querySelectorAll('details.param-help')];if(!details.length)continue;

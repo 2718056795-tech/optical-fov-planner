@@ -117,6 +117,16 @@ function pixelSpacing(d,frame,z,nx,ny,roi=null,mode='normal'){
   const xEdges=[at(col,rowLine),at(col+1,rowLine)],yEdges=[at(col+.5,row),at(col+.5,row+1)];
   return {label,column:col+1,roiColumn:col-x0+1,row:row+1,x:distance(...xEdges),y:distance(...yEdges),xEdges,yEdges};
  });
+ // With pitch, magnification also varies along sensor rows. Measure each
+ // end pixel at the optical-axis column, or at the ROI centre when cropped.
+ if(Math.abs(frame.basis.v[2])>1e-9){
+  const columnLine=axisColumnInside?ax:x0+rw/2;
+  for(const [sampleRow,label] of [[y0,'上端'],[y0+rh-1,'下端']]){
+   const xEdges=[at(middle,sampleRow+.5),at(middle+1,sampleRow+.5)];
+   const yEdges=[at(columnLine,sampleRow),at(columnLine,sampleRow+1)];
+   samples.push({label,column:middle+1,row:sampleRow+1,rowSample:true,x:distance(...xEdges),y:distance(...yEdges),xEdges,yEdges});
+  }
+ }
  return {mode,nx,ny,normal,samples,axisColumnInside,axisRowInside,rowLine,bounds:{x0,y0,rw,rh}};
 }
 function pixelSampling(s,r=solve(s)){
@@ -285,12 +295,17 @@ function frameDimensions(d){
  const parallel=(a,b)=>Math.abs(a[0]*b[1]-a[1]*b[0])<=1e-7*norm(a)*norm(b);
  const rectangle=edges.every((v,i)=>perpendicular(v,edges[(i+1)%4]));
  const sideParallel=parallel(edges[1],edges[3]);
- const middleSegment=sliceSegment(p,d.axisHit[0],0);
- const leftMid=mul(add(p[0],p[3]),.5),v=vec(p[1],p[2]);
- const q=dot(vec(p[1],leftMid),v)/dot(v,v);
- const rightProjection=add(p[1],mul(v,q));
- const highSegment=sideParallel?[leftMid,rightProjection]:null;
- return {rectangle,sideParallel,kind:rectangle?'矩形':(sideParallel||parallel(edges[0],edges[2]))?'梯形':'四边形',
+ const horizontalBases=!sideParallel&&parallel(edges[0],edges[2]);
+ const middleAxis=horizontalBases?1:0;
+ const middleSegment=sliceSegment(p,d.axisHit[middleAxis],middleAxis);
+ let highSegment=null;
+ if(sideParallel||horizontalBases){
+  const [a,b,c,e]=horizontalBases?[p[0],p[1],p[3],p[2]]:[p[0],p[3],p[1],p[2]];
+  const mid=mul(add(a,b),.5),direction=vec(c,e);
+  const projection=dot(vec(c,mid),direction)/dot(direction,direction);
+  highSegment=[mid,add(c,mul(direction,projection))];
+ }
+ return {rectangle,sideParallel,horizontalBases,kind:rectangle?'矩形':(sideParallel||horizontalBases)?'梯形':'四边形',
   width:m.width,height:m.height,left:distance(p[0],p[3]),right:distance(p[1],p[2]),
   middle:middleSegment?distance(...middleSegment):null,high:highSegment?distance(...highSegment):null,
   leftSegment:[p[0],p[3]],rightSegment:[p[1],p[2]],middleSegment,highSegment,

@@ -2,7 +2,9 @@
 
 用于 3D 视觉系统的几何选型。面阵结构光支持单目和双目，提供相机与投影视野、共同视野、投影余量和物方像素间距。相机景深可比较三种公式，并按输入的 F 值计算对焦处衍射斑。线激光模式给出激光平面内的梯形视野和测高像素间距。
 
-## 下载与运行
+## 在线使用和下载
+
+[打开在线版](https://2718056795-tech.github.io/optical-fov-planner/)，在浏览器中直接使用，也可将此链接分享给同事。
 
 [下载最新版离线 HTML](https://github.com/2718056795-tech/optical-fov-planner/releases/latest/download/optical-fov-planner.html)，保存后用浏览器打开。网页中的界面、视野计算、景深和衍射功能与同一次本地 Windows EXE 构建使用同一份 HTML。两种入口的本地参数记录各自保存，需要交换方案时可以导出和载入 JSON。
 
