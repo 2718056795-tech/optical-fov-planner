@@ -86,7 +86,10 @@ function solveWorkPlanes(s){
   try{
    const distance=Number(range[key]);
    number(distance,label+'工作距离',0.000001,1e7);
-   if(key==='near'?distance>=wd:distance<=wd)throw Error(key==='near'?'必须小于名义工作距离':'必须大于名义工作距离');
+   if(key==='near'?distance>=wd:distance<=wd){
+    const limit=wd.toLocaleString('zh-CN',{maximumFractionDigits:6});
+    throw Error((key==='near'?'必须小于':'必须大于')+'名义工作距离 '+limit+' mm');
+   }
    const z=planeAtDistance(s,distance);
    const plane={key,label,wd:distance,z,result:solve({...s,plane:z})};
    if(key==='near')planes.unshift(plane);else planes.push(plane);
