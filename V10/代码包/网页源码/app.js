@@ -33,17 +33,28 @@ ${field('camera.w','Sensor 长 / X (mm)','.001')}${field('camera.h','Sensor 宽 
 </div><p class="small" id="sensorInfo"></p><details class="param-help"><summary>Sensor 联动规则</summary><p class="editor-hint">改像元或像素数 → 更新毫米尺寸；改毫米尺寸 → 反算像元并更新另一边。X / Y 方向固定。</p></details></div><div class="roi-editor wide"><div class="editor-heading"><strong>ROI 开窗</strong><div class="editor-actions"><span class="small">自动居中</span><button id="fullROI" type="button">恢复全幅</button></div></div><p id="roiSensorInfo" class="small"></p><div class="fields" id="roiFields"></div><details class="param-help"><summary>ROI 坐标说明</summary><p class="editor-hint">开窗自动居中；像素数为奇数时，起点取整到左上侧。裁剪尺寸按像素比例换算。</p></details></div></div>
 
 </div>
-<details class="param-help"><summary>相机模型说明</summary><p id="cameraModelInfo" class="small"></p></details><details><summary>其他姿态与幅面偏心</summary><div class="fields">${field('camera.pitch','Y 方向俯仰 (°)')}${field('camera.ox','幅面中心偏心 X (mm)','.01')}${field('camera.oy','幅面中心偏心 Y (mm)','.01')}</div></details>`;
+<details class="param-help"><summary>相机模型说明</summary><p id="cameraModelInfo" class="small"></p></details><details><summary>其他姿态与幅面偏心<span class="pose-summary" id="cameraPoseSummary"></span></summary><div class="fields">${field('camera.pitch','Y 方向俯仰 (°)')}${field('camera.ox','幅面中心偏心 X (mm)','.01')}${field('camera.oy','幅面中心偏心 Y (mm)','.01')}</div></details>`;
 $('projectorFields').innerHTML=`<div class="fields">${field('projector.tr','投射比 TR = 距离 / 宽','0.001')}${field('projector.f','投影等效焦距 (mm)','.001')}
 
 ${field('projector.w','DMD 有效宽 (mm)','.001')}${field('projector.h','DMD 有效高 (mm)','.001')}${field('projector.nx','投影横向像素数 / X (px)','1')}${field('projector.ny','投影纵向像素数 / Y (px)','1')}<label>参考垂直距离 (mm)<input id="projectorNormalWD" type="number" readonly title="光机光心到参考平面的垂直距离，自动联动"></label><label>参考沿光轴距离 (mm)<input id="projectorAxisWD" type="number" readonly title="沿光机光轴到参考平面的距离，包含倾斜影响，自动联动"></label>${field('projector.yaw','X–Z 倾角 (°)')}
-</div><details class="param-help"><summary>TR 与投影说明</summary><p class="small" id="projectorInfo"></p></details><details><summary>更多姿态与投影偏心</summary><div class="fields">${field('projector.pitch','Y 方向俯仰 (°)')}${field('projector.ox','幅面中心偏心 X (mm)','.01')}${field('projector.oy','幅面中心偏心 Y (mm)','.01')}</div></details>`;
+</div><details class="param-help"><summary>TR 与投影说明</summary><p class="small" id="projectorInfo"></p></details><details><summary>更多姿态与投影偏心<span class="pose-summary" id="projectorPoseSummary"></span></summary><div class="fields">${field('projector.pitch','Y 方向俯仰 (°)')}${field('projector.ox','幅面中心偏心 X (mm)','.01')}${field('projector.oy','幅面中心偏心 Y (mm)','.01')}</div></details>`;
 function linkProjector(changed){const d=state.projector;if(changed==='projector.tr')d.f=d.tr*d.w;else d.tr=d.f/d.w;d.link='f';for(const k of ['f','tr','link']){const e=document.querySelector('[data-path="projector.'+k+'"]');if(e&&e!==document.activeElement)e.value=Number.isFinite(d[k])||typeof d[k]==='string'?displayNumber(d[k],'projector.'+k):'';}}
 
 function sensorParts(side=1){const right=side===2;return {c:right?state.camera2:state.camera,r:right?state.roi2:state.roi,cp:right?'camera2':'camera',rp:right?'roi2':'roi',suffix:right?'2':'',counts:right?sensorLastCounts2:sensorLastCounts};}
 function syncSensorInputs(side=1){const {cp,rp}=sensorParts(side);for(const key of [cp+'.pixelPitch',cp+'.w',cp+'.h',rp+'.nx',rp+'.ny',rp+'.rw',rp+'.rh',rp+'.rx',rp+'.ry']){const e=document.querySelector('[data-path="'+key+'"]');if(e&&e!==document.activeElement){const v=get(state,key);e.value=Number.isFinite(v)?displayNumber(v,key):'';}}}
 function linkSensor(changed,side=1){const {c,r,cp,rp,counts}=sensorParts(side),validCount=v=>Number.isInteger(v)&&v>0;for(const [count,size,start] of [['nx','rw','rx'],['ny','rh','ry']])if(changed===rp+'.'+count&&validCount(r[count])){if(r[start]===0&&r[size]===counts[count])r[size]=r[count];counts[count]=r[count];}if(changed===cp+'.w')c.pixelPitch=validCount(r.nx)?c.w*1000/r.nx:NaN;if(changed===cp+'.h')c.pixelPitch=validCount(r.ny)?c.h*1000/r.ny:NaN;if(changed!==cp+'.w')c.w=validCount(r.nx)?r.nx*c.pixelPitch/1000:NaN;if(changed!==cp+'.h')c.h=validCount(r.ny)?r.ny*c.pixelPitch/1000:NaN;syncSensorInputs(side);sensorInfo(side);}
 function sensorInfo(side=1){const {c,r,suffix}=sensorParts(side),p=c.pixelPitch,consistent=Number.isFinite(p)&&p>0&&Math.abs(c.w-r.nx*p/1000)<1e-7&&Math.abs(c.h-r.ny*p/1000)<1e-7;$('sensorInfo'+suffix).textContent=consistent?fmt(p,4)+' μm × '+r.nx+' / '+r.ny+' px = '+fmt(c.w,4)+' × '+fmt(c.h,4)+' mm':'参数尚未一致：编辑任一 Sensor 参数后按方形像元统一联动。';$('sensorInfo'+suffix).classList.toggle('sensor-warning',!consistent);$('roiSensorInfo'+suffix).textContent='全幅像素：'+r.nx+' × '+r.ny+' px（由相机 Sensor 联动区设置）。';}
+
+function renderPoseSummary(id,device){
+ const parts=[];
+ if(device){
+  for(const [key,label,unit] of [['pitch','俯仰','°'],['ox','X 偏心',' mm'],['oy','Y 偏心',' mm']]){
+   const value=device[key];
+   if(Number.isFinite(value)&&value!==0)parts.push(label+' '+(value>0?'+':'')+value+unit);
+  }
+ }
+ $(id).textContent=parts.join(' · ');
+}
 
 function modelControls(){for(const [c,suffix] of [[state.camera,''],[state.camera2,'2']]){if(!$('singleMag'+suffix))continue;$('singleMag'+suffix).hidden=c.model!=='magnification';$('originOffsetField'+suffix).hidden=c.model==='magnification';}updateSceneUI();}
 
@@ -126,7 +137,9 @@ function syncWorkPlanes(errors={}){
   button.disabled=!item;button.setAttribute('aria-pressed',String(active));
   button.setAttribute('aria-label',item?planeLabel(item.plane)+'，投影覆盖 '+item.coverage+'，最小余量 '+margin.textContent+' 毫米，'+item.locations.join('，'):button.textContent+'，'+corners.textContent);
  }
- $('activeDepthLabel').textContent=currentPlane?planeLabel(currentPlane)+(endpointDraft?' · 距离待更新':''):'';
+ const label=currentPlane?planeLabel(currentPlane)+(endpointDraft?' · 距离待更新':''):'';
+ $('activeDepthLabel').textContent=label;
+ $('overlapDepthLabel').textContent=label;
 }
 function planeLabel(plane){return plane.label+' · WD '+fmt(plane.wd)+' mm';}
 function sync(){endpointDraft=null;normalizeInputs(state);syncMountWD();document.querySelectorAll('[data-path]').forEach(e=>e.value=displayNumber(get(state,e.dataset.path),e.dataset.path));syncNominalWD(true);for(const [key,id] of endpointInputs)$(id).value=state.depthRange[key];sensorLastCounts={nx:state.roi.nx,ny:state.roi.ny};sensorLastCounts2={nx:state.roi2.nx,ny:state.roi2.ny};sensorInfo();sensorInfo(2);linkProjector('');modelControls();}
@@ -170,6 +183,7 @@ function upgradeSampleROI(s){for(const setup of [s,s.setups?.mono,s.setups?.ster
 try{const stored=(localStorage.getItem('structured-light-fov-v10')||localStorage.getItem('structured-light-fov-v9')||localStorage.getItem('structured-light-fov-v8')||localStorage.getItem('structured-light-fov-v7')||localStorage.getItem('structured-light-fov-v6')||localStorage.getItem('structured-light-fov-v5')||localStorage.getItem('structured-light-fov-v4'));if(stored){const x=loadState(JSON.parse(stored));FOV.solve(x);state=x;toast('已恢复上次有效参数');}}catch(e){}
 const depthMethods=[['① 标准几何','远距近似'],['② 超焦距','原脚本近似'],['③ 有限共轭','薄透镜']];
 const depthMetrics=[['near','最近清晰距离'],['far','最远清晰距离'],['front','前景深'],['back','后景深']];
+const depthTableRows=[...depthMetrics,['hyperfocal','超焦距'],['total','总景深']];
 function depthControl(key,name,label){
  const p=key+'.dof.'+name;
  return `<label for="${p}">${label}</label><input id="${p}" data-path="${p}" type="number" step="any">`;
@@ -179,7 +193,7 @@ const depthGroups=['camera','camera2'].map((key,index)=>{
  group.className='dof-group'+(index?' stereo-only':'');
  group.hidden=Boolean(index);
  group.innerHTML=`
-  <div class="dof-group-head"><h3></h3></div>
+  <div class="dof-group-head"><h3 id="${key}-dof-title"></h3></div>
   <div class="dof-controls">
    <div class="dof-input">${depthControl(key,'focalLength','镜头焦距 (mm)')}</div>
    <div class="dof-input">${depthControl(key,'focusDistance','轴向对焦物距 (mm)')}</div>
@@ -193,7 +207,15 @@ const depthGroups=['camera','camera2'].map((key,index)=>{
    </div>
   </div>
   <p class="small dof-datum"></p><p class="small dof-error" role="status" hidden></p>
-  <div class="dof-results"></div>
+  <div class="dof-results">
+   <table aria-labelledby="cameraDofTitle ${key}-dof-title">
+    <thead><tr><th scope="col">指标</th>${depthMethods.map(([title,subtitle])=>
+     `<th scope="col">${title}<small>${subtitle}</small></th>`).join('')}</tr></thead>
+    <tbody>${depthTableRows.map(([field,label])=>
+     `<tr${field==='total'?' class="dof-total"':''}><th scope="row">${label}</th>${depthMethods.map((_,i)=>
+      field==='hyperfocal'&&i!==1?'<td aria-label="不适用" title="此方法不单列超焦距">—</td>':`<td data-dof-${field}>—</td>`).join('')}</tr>`).join('')}</tbody>
+   </table>
+  </div>
   <div class="dof-diffraction">
    <h4>对焦处衍射斑 <span class="small">像方 · 艾里斑</span></h4>
    <dl><div><dt>艾里斑直径</dt><dd data-diffraction-diameter></dd></div>
@@ -203,7 +225,7 @@ const depthGroups=['camera','camera2'].map((key,index)=>{
    <p class="small dof-diffraction-error dof-error" role="status" hidden></p>
   </div>`;
  $('cameraDofGroups').append(group);
- return {key,group,pixelsInput:$(key+'.dof.cocPixels'),diameterInput:$(key+'.dof.cocUm')};
+ return {key,group,resultRows:group.querySelector('.dof-results tbody').rows,pixelsInput:$(key+'.dof.cocPixels'),diameterInput:$(key+'.dof.cocUm')};
 });
 function depthValue(value){
  if(value===Infinity)return '∞';
@@ -233,7 +255,7 @@ function renderDiffraction(group,params,spot,message){
  warning.textContent=message;
 }
 function renderCameraDepth(){
- for(const [index,{key,group,pixelsInput,diameterInput}] of depthGroups.entries()){
+ for(const [index,{key,group,resultRows,pixelsInput,diameterInput}] of depthGroups.entries()){
   if(group.hidden)continue;
   const params=state[key].dof;
   const {byCount,blur,values,depthError,spot,spotError}=cameraDepthResults(params);
@@ -244,13 +266,12 @@ function renderCameraDepth(){
   const warning=group.querySelector('.dof-error');
   warning.hidden=!depthError;
   warning.textContent=depthError;
-  group.querySelector('.dof-results').innerHTML=depthMethods.map(([title,subtitle],i)=>{
-   const value=values[i];
-   return `<article class="dof-result"><h4>${title}</h4><div class="dof-method small">${subtitle}</div>
-    <div class="dof-total"><span>总景深</span><strong data-dof-total>${depthValue(value?.total)}</strong></div>
-    <dl>${depthMetrics.map(([name,label])=>`<div><dt>${label}</dt><dd data-dof-${name}>${depthValue(value?.[name])}</dd></div>`).join('')}</dl>
-    ${i===1?`<div class="dof-hyperfocal small">超焦距 <span>${depthValue(value?.hyperfocal)}</span></div>`:''}</article>`;
-  }).join('');
+  depthTableRows.forEach(([field],row)=>{
+   const cells=resultRows[row].cells;
+   for(let i=0;i<depthMethods.length;i++){
+    cells[i+1].textContent=depthValue(values[i]?.[field]);
+   }
+  });
   renderDiffraction(group,params,spot,spotError);
  }
 }
@@ -518,7 +539,6 @@ function sectionTilt(origin,axis,radius,color){
 }
 function drawDepthSection(depthSections){
  const {svg,W,H}=initSvg('layout');
- $('view3d').classList.remove('active');$('viewSide').classList.add('active');
  $('layoutCaption').textContent='X–Z 光路截面（Y=0）。实线为截面边界，彩色虚线为光轴投影。角度相对工作平面法线；WD 沿相机光轴自镜头前端量取'+(isStereo()?'（左相机）':'')+'。绿色为共同覆盖。';
  const sections=depthSections.filter(section=>section.result);
  if(!sections.length){svg.innerHTML='';return;}
@@ -600,7 +620,7 @@ function drawDepthSection(depthSections){
  });
  svg.innerHTML=out+'</g>';
 }
-function drawMonoLayout(){const {svg,W,H}=initSvg('layout');$('view3d').classList.toggle('active',view==='3d');$('viewSide').classList.toggle('active',view==='side');$('layoutCaption').textContent=view==='3d'?'拖动旋转视角；细线为边界光线，虚线为光轴；两个光心之间为直线基线。':'沿 Y 方向投影到 X–Z 的侧视图，全部角点光线均投影显示；不是 Y=0 截面。';if(!result){svg.innerHTML='';return;}const r=result,z=currentPlane.z;
+function drawMonoLayout(){const {svg,W,H}=initSvg('layout');$('layoutCaption').textContent=view==='3d'?'拖动旋转视角；细线为边界光线，虚线为光轴；两个光心之间为直线基线。':'沿 Y 方向投影到 X–Z 的侧视图，全部角点光线均投影显示；不是 Y=0 截面。';if(!result){svg.innerHTML='';return;}const r=result,z=currentPlane.z;
 const proj=q=>view==='side'?[q[0],q[2]]:[q[0]*Math.cos(az)-q[1]*Math.sin(az),(q[0]*Math.sin(az)+q[1]*Math.cos(az))*Math.sin(el)+q[2]*Math.cos(el)];
 const all=[r.camera.pos,r.projector.pos,...r.camera.points.map(p=>[...p,z]),...r.projector.points.map(p=>[...p,z])];const t=fit(all.map(proj),W,H,60),p=q=>t.p(proj(q));let out=view==='side'?grid(t,W,H,'X (mm)','Z (mm)'):'';
 const planeBounds=FOV.metrics([...r.camera.points,...r.projector.points]).bounds;
@@ -612,10 +632,15 @@ if(Math.abs(r.optical.originOffset)>1e-8){const front=r.camera.pos.map((v,i)=>v+
 if(view==='3d'){const origin=[46,H-36],k=22;for(const [q,label,c] of [[[k,0,0],'X','#7994a5'],[[0,k,0],'Y','#7994a5'],[[0,0,k],'Z','#7994a5']]){let d=proj(q),end=[origin[0]+d[0],origin[1]-d[1]];out+=line(origin,end,c)+text([end[0],end[1]-5],label);}}svg.innerHTML=out;}
 
 function drawLayout(depthSections=workPlanes){
+ for(const [id,key] of [['view3d','3d'],['viewSide','side']]){
+  const button=$(id),active=view===key;
+  button.classList.toggle('active',active);
+  button.setAttribute('aria-pressed',String(active));
+ }
  $('layout').style.touchAction=view==='3d'?'none':'pan-y';
  if(view==='side')return drawDepthSection(depthSections);
  if(!isStereo())return drawMonoLayout();
- const {svg,W,H}=initSvg('layout');$('view3d').classList.toggle('active',view==='3d');$('viewSide').classList.toggle('active',view==='side');$('layoutCaption').textContent=view==='3d'?'光机居中、左右各一台相机；每台设备四条实线连接全幅四个角点，虚线为光轴。拖动旋转；点击“空间示意”恢复视角。':'X–Z侧视投影；各设备四条角点连线均保留，前后角点的投影可能重叠。';if(!result){svg.innerHTML='';return;}
+ const {svg,W,H}=initSvg('layout');$('layoutCaption').textContent=view==='3d'?'光机居中、左右各一台相机；每台设备四条实线连接全幅四个角点，虚线为光轴。拖动旋转；点击“空间示意”恢复视角。':'X–Z侧视投影；各设备四条角点连线均保留，前后角点的投影可能重叠。';if(!result){svg.innerHTML='';return;}
  const r=result,z=currentPlane.z,devices=[{d:r.projector,color:'#ff9500',fill:'#ff950012',name:'光机',key:'projector'},{d:r.camera,color:'#007aff',fill:'#007aff0a',name:'左相机',key:'left'},{d:r.camera2,color:'#af52de',fill:'#af52de0a',name:'右相机',key:'right'}];
  const project=q=>view==='side'?[q[0],q[2]]:[q[0]*Math.cos(az)-q[1]*Math.sin(az),(q[0]*Math.sin(az)+q[1]*Math.cos(az))*Math.sin(el)+q[2]*Math.cos(el)];
  const all=devices.flatMap(({d})=>[d.pos,...d.points.map(p=>[...p,z])]),t=fit(all.map(project),W,H,64),p=q=>t.p(project(q)),b=FOV.metrics(devices.flatMap(({d})=>d.points)).bounds;
@@ -677,6 +702,9 @@ function update(){
   $('error').hidden=false;
   $('error').textContent=e.message+'。已清空计算结果。';
  }
+ renderPoseSummary('cameraPoseSummary',result&&state.camera);
+ renderPoseSummary('cameraPoseSummary2',result?.rightDevice);
+ renderPoseSummary('projectorPoseSummary',result&&state.projector);
  syncWorkPlanes(planeErrors);
  renderCameraDepth();
  $('modelInfo').hidden=!result;
@@ -718,7 +746,7 @@ function appendDepthCSV(rows,params,cameraName){
 }
 
 $('csv').onclick=()=>{
- if(!result)return;const r=result,stereo=isStereo(),rows=[['3D 视觉视野规划 V10.3'],['系统模式',stereo?'双目':'单目'],['3D视野定义',stereo?'左 ROI ∩ 右 ROI ∩ 光机投影':'相机 ROI ∩ 光机投影'],['参数','值']];
+ if(!result)return;const r=result,stereo=isStereo(),rows=[['3D 视觉视野规划 V10.5'],['系统模式',stereo?'双目':'单目'],['3D视野定义',stereo?'左 ROI ∩ 右 ROI ∩ 光机投影':'相机 ROI ∩ 光机投影'],['参数','值']];
  function flatten(o,p=''){for(const [k,v] of Object.entries(o)){if(k==='setups')continue;const key=p?p+'.'+k:k;if(v&&typeof v==='object')flatten(v,key);else rows.push([key,v]);}}flatten(state);
  rows.push([],['工作截面对照','沿轴 WD (mm)',stereo?'投影覆盖左 / 右 ROI':'投影覆盖 ROI','最小有符号余量 (mm)','对应角点']);
  for(const plane of workPlanes){
