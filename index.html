@@ -309,12 +309,28 @@ body:has(.fov-toolbar #toast:not(:empty)) #lineMain .content > #lineStatus:not(.
 }
 #structuredMain .parameter-grid .device-title { border: 0; padding-left: 0; }
 :is(#structuredMain, #lineMain) .parameter-grid .body { padding: 3px 14px 12px; }
-:is(#structuredMain, #lineMain) .parameter-grid label { color: var(--workbench-secondary); line-height: 15px; }
+:is(#structuredMain, #lineMain) .parameter-grid label { color: var(--workbench-secondary); font-size: 12px; line-height: 16px; }
 :is(#structuredMain, #lineMain) .parameter-grid :is(input, select) {
   height: var(--workbench-control-height);
+  color: var(--workbench-text);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
   background-color: #fafafd;
   border-color: #d6d9e2;
   border-radius: var(--workbench-control-radius);
+}
+/* Retain native stepping and its hit area on mouse, keyboard and touch. */
+/* Active values share the disclosure heading while the fields are collapsed. */
+.parameter-grid .pose-summary:not(:empty) {
+  margin-inline-start: 6px;
+  color: var(--workbench-secondary);
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+.parameter-grid details[open] > summary .pose-summary { display: none; }
+.parameter-grid input[type="number"]::-webkit-inner-spin-button { opacity: 1; }
+@media (hover: hover) and (pointer: fine) and (forced-colors: none) {
+  .parameter-grid label:not(:hover):not(:focus-within) input[type="number"]::-webkit-inner-spin-button { opacity: 0; }
 }
 :is(#structuredMain, #lineMain) .parameter-grid input[readonly] { background: #e8eaf0; color: var(--workbench-secondary); }
 :is(#structuredMain, #lineMain) .parameter-grid :is(input, select):focus {
@@ -362,12 +378,12 @@ body:has(.fov-toolbar #toast:not(:empty)) #lineMain .content > #lineStatus:not(.
   .fov-toolbar .header-toolbar-slot, .fov-toolbar #toast, .fov-toolbar .product-selector { display: none !important; }
 }
 
-/* Camera depth-of-field comparisons share one three-column grid. */
+/* Each camera compares its three depth-of-field models in one table. */
 .dof-panel .phead { padding: 10px 14px; }
 .dof-panel .body { padding: 10px 14px 12px; }
 .dof-group + .dof-group { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--workbench-quiet-divider); }
 .dof-group-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 3px 12px; margin-bottom: 7px; }
-.dof-group-head h3, .dof-result h4 { margin: 0; color: var(--workbench-text); font-size: 13px; }
+.dof-group-head h3 { margin: 0; color: var(--workbench-text); font-size: 13px; }
 .dof-controls { display: flex; flex-wrap: wrap; gap: 7px 10px; }
 .dof-input { flex: 1 1 95px; min-width: 70px; max-width: 160px; }
 .dof-input-pair { display: grid; flex: 1 1 166px; min-width: 156px; max-width: 225px; grid-template-columns: minmax(0, 1fr) 94px; align-content: end; column-gap: 5px; }
@@ -378,28 +394,22 @@ body:has(.fov-toolbar #toast:not(:empty)) #lineMain .content > #lineStatus:not(.
 .dof-controls input[readonly] { background: #eeeff3; }
 .dof-datum, .dof-error, .dof-note { margin: 7px 0; font-size: 11px; }
 .dof-error { color: #a13e26; }
-.dof-results { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
-.dof-result { min-width: 0; padding: 10px; border: 1px solid var(--workbench-quiet-divider); border-radius: var(--workbench-panel-radius); background: #fafafd; overflow-wrap: anywhere; }
-.dof-method, .dof-hyperfocal { font-size: 11px; }
-.dof-total { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 1px 8px; margin-top: 7px; color: var(--workbench-secondary); font-size: 11px; }
-.dof-total strong { color: var(--workbench-text); font-size: 19px; line-height: 1.25; }
-.dof-result dl { display: grid; gap: 3px; margin: 6px 0 0; font-size: 11px; }
-.dof-result dl > div { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 1px 6px; }
-.dof-result dt { color: var(--workbench-secondary); }
-.dof-result dd { margin: 0; color: var(--workbench-text); }
-.dof-hyperfocal { margin-top: 5px; }
+.dof-results { max-width: 100%; overflow-x: auto; }
+.dof-results table { width: 100%; border-collapse: collapse; color: var(--workbench-text); font-size: 12px; font-variant-numeric: tabular-nums; }
+.dof-results th, .dof-results td { padding: 5px 10px; border-bottom: 1px solid var(--workbench-quiet-divider); text-align: end; }
+.dof-results th:first-child { text-align: start; }
+.dof-results thead th { width: 25%; background: #f7f8fa; color: var(--workbench-text); font-weight: 600; white-space: normal; }
+.dof-results thead small { display: block; color: var(--workbench-secondary); font-size: 11px; font-weight: 400; }
+.dof-results tbody th { background: transparent; color: var(--workbench-secondary); font-weight: 400; white-space: normal; }
+.dof-results td { white-space: nowrap; }
+.dof-results .dof-total > * { border-block: 1px solid var(--workbench-divider); background: #f7f8fa; color: var(--workbench-text); font-weight: 650; }
 .dof-note { margin-bottom: 0; }
 
 @media (max-width: 540px) {
   .dof-panel .phead, .dof-panel .body { padding-inline: 10px; }
   .dof-input { flex-basis: 125px; max-width: none; }
   .dof-input-pair { max-width: none; }
-  .dof-results { gap: 5px; }
-  .dof-result { padding: 7px 6px; }
-  .dof-result h4 { font-size: 12px; }
-  .dof-total { display: block; }
-  .dof-total strong { display: block; font-size: 16px; }
-  .dof-result dl > div { display: block; }
+  .dof-results th, .dof-results td { padding: 5px 4px; }
 }
 
 .dof-diffraction { margin-top: 8px; padding: 8px 10px; border: 1px solid var(--workbench-quiet-divider); border-radius: var(--workbench-panel-radius); }
@@ -428,14 +438,79 @@ body:has(.fov-toolbar #toast:not(:empty)) #lineMain .content > #lineStatus:not(.
 #structuredMain .parameter-grid .depth-distance-grid input { padding-inline: 7px; }
 .depth-distance-grid input[aria-invalid="true"] { border-color: #b14e3a; }
 .depth-input-error { margin: 6px 0 0; color: #a13e26; font-size: 11px; line-height: 1.5; }
+/* Chart headers travel with their panels when opened in a dialog. */
+:is(.output-panel, .laser-panel) > .phead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  flex: none;
+  gap: 2px 6px;
+  min-height: 48px;
+  padding: 5px 12px;
+}
+:is(.output-panel, .laser-panel) > .phead h2 { font-size: 13px; line-height: 18px; }
 .overview-plot-title { min-width: 0; }
-.overview-plot-title h2 { line-height: 15px; }
+.expanded-plot > .phead .overview-plot-title h2 { display: none; }
+:is(.overview-plot-tools, .line-plot-actions) {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: nowrap;
+  gap: 2px;
+  margin-inline-start: auto;
+}
+:is(.overview-plot-tools, .line-plot-actions) > button {
+  flex: none;
+  padding: 3px 5px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--workbench-secondary);
+  font-size: 12px;
+  line-height: 20px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+:is(.overview-plot-tools, .line-plot-actions) > button:hover {
+  background: #eef0f4;
+  color: var(--workbench-text);
+}
+:is(.overview-plot-tools, .line-plot-actions) button:focus-visible {
+  outline: 2px solid var(--workbench-accent);
+  outline-offset: 1px;
+}
+.overview-plot-tools .tabs {
+  flex: none;
+  align-items: center;
+  gap: 1px;
+  margin-inline-end: 4px;
+  padding: 2px;
+  background: #edeef2;
+  border-radius: 8px;
+}
+.overview-plot-tools .tabs button {
+  border-radius: 6px;
+  padding: 3px 6px;
+  line-height: 18px;
+  white-space: nowrap;
+  color: var(--workbench-secondary);
+}
+.overview-plot-tools .tabs button.active { color: var(--workbench-text); }
+@media (forced-colors: active) {
+  .overview-plot-tools .tabs [aria-pressed="true"] { outline: 1px solid Highlight; outline-offset: -1px; }
+}
+@media print {
+  .overview-plot-tools, .line-plot-actions { display: none !important; }
+}
 .depth-current {
   display: block;
   color: var(--workbench-secondary);
-  font-size: 10px;
-  line-height: 13px;
-  white-space: nowrap;
+  font-size: 12px;
+  font-weight: 550;
+  font-variant-numeric: tabular-nums;
+  line-height: 16px;
+  overflow-wrap: anywhere;
 }
 .depth-comparison { min-width: 0; overflow: hidden; container-type: inline-size; }
 .depth-comparison table { width: 100%; border-collapse: collapse; font-size: 12px; line-height: 1.3; font-variant-numeric: tabular-nums; }
@@ -464,11 +539,17 @@ body:has(.fov-toolbar #toast:not(:empty)) #lineMain .content > #lineStatus:not(.
 @media print { .depth-comparison { break-inside: avoid; } .depth-comparison button[data-depth] { display: inline !important; } }
 
 @media (max-width: 1100px) {
-  #structuredMain .plots > .panel.combined-panel > .phead {
-    flex-wrap: nowrap;
-    padding-block: 7px;
+  :is(.plots, .laser-plots) > .panel > .phead {
+    min-height: 73px;
+    flex-flow: column nowrap;
+    align-items: stretch;
+    justify-content: center;
+    padding-block: 4px;
   }
-  .combined-panel .overview-plot-tools > button { white-space: nowrap; }
+  :is(.plots, .laser-plots) > .panel > .phead h2 { flex: none; }
+}
+@media (min-width: 761px) and (max-width: 900px) {
+  .overview-plot-tools .tabs button, .overview-plot-tools > button { padding-inline: 3px; }
 }
 
 </style></head><body>
@@ -499,11 +580,11 @@ body:has(.fov-toolbar #toast:not(:empty)) #lineMain .content > #lineStatus:not(.
 <section class="panel dof-panel" aria-labelledby="cameraDofTitle"><div class="phead"><h2 id="cameraDofTitle">相机景深 · 三式对比</h2><span class="small">物方轴向 · mm</span></div><div class="body"><div id="cameraDofGroups"></div><p class="small dof-note">本区参数手动填写，仅供景深与衍射计算。物距沿光轴从物方主面量起。超焦距列保留原脚本的近似与远端判定，仅用于对照。有限共轭列按理想薄透镜估算。</p></div></section>
 <div class="legend"><span class="full">相机完整 Sensor</span><span id="cameraLegend">相机 ROI</span><span class="right-eye stereo-only" hidden>右相机 ROI / 虚线全幅</span><span class="proj">光机投影</span><span class="over">共同视野</span></div>
 <div class="plots">
-<section class="panel output-panel layout-panel"><div class="phead"><h2>光学系统布局</h2><div class="tabs"><button id="view3d" class="active">空间示意</button><button id="viewSide">侧视 X–Z</button><button class="plot-export" data-export-plot="layout" data-title="光学系统布局">导出此图</button></div></div><svg id="layout" class="plot" role="img" aria-label="光机与相机布局示意图"></svg><div class="caption" id="layoutCaption"></div></section>
+<section class="panel output-panel layout-panel"><div class="phead"><h2>光学系统布局</h2><div class="tabs" role="group" aria-label="光学布局视角"><button id="view3d" class="active" aria-pressed="true">空间示意</button><button id="viewSide" aria-pressed="false">侧视 X–Z</button></div><button class="plot-export" data-export-plot="layout" data-title="光学系统布局">导出此图</button></div><svg id="layout" class="plot" role="img" aria-label="光机与相机布局示意图"></svg><div class="caption" id="layoutCaption"></div></section>
 <section class="panel output-panel combined-panel"><div class="phead">
 <div class="overview-plot-title"><h2>2D 相机与光机视野</h2><span class="depth-current" id="activeDepthLabel" aria-live="polite">名义工作平面 · WD 115.00 mm</span></div>
 <button class="plot-export" data-export-plot="combinedFootprint" data-title="相机与光机叠加视野">导出此图</button></div><svg id="combinedFootprint" class="plot" role="img" aria-label="同一工作平面上的相机、光机及重合视野"></svg><div class="combined-summaries"><div><div class="camera-summary-row"><div class="camera-column camera-main-column"><h3 class="camera-summary-title" id="cameraOutputTitle">2D 相机视野</h3><div id="cameraOutput" class="output-summary camera-main-info"></div></div><div class="camera-column clearance-column" id="clearanceColumn" aria-hidden="true" style="visibility:hidden"><h3 class="clearance-title">投影余量 <small>mm</small></h3><div id="cameraClearance" class="clearance-slot"></div></div></div></div><div class="stereo-only" hidden><div class="camera-summary-row"><div class="camera-column camera-main-column"><h3 class="right-summary-title">右相机视野</h3><div id="cameraOutput2" class="output-summary camera-main-info"></div></div><div class="camera-column clearance-column" id="clearanceColumn2" aria-hidden="true" style="visibility:hidden"><h3 class="clearance-title">投影余量 <small>mm</small></h3><div id="cameraClearance2" class="clearance-slot"></div></div></div></div><div><h3 class="projector-summary-title">光机视野</h3><div id="projectorOutput" class="output-summary"></div></div></div><div class="caption">蓝色为单目/左相机，紫色为右相机，虚线为对应完整 Sensor，橙色为光机投影，绿色为 3D 共同视野。各范围使用同一坐标和比例。T/C 为相机未被光机覆盖的区域；分区尺寸见下方。</div></section>
-<section class="panel output-panel overlap-panel"><div class="phead"><h2>3D 重合视野 · 2D 未覆盖尺寸</h2><button class="plot-export" data-export-plot="footprint" data-title="3D重合视野与缺边尺寸">导出此图</button></div><div class="region-controls"><label>选择标注分区<select id="regionChoice" aria-label="选择标注边长的2D未覆盖分区"></select></label><span id="regionChoiceInfo" class="small"></span></div><svg id="footprint" class="plot" role="img" aria-label="重合视野与相机实际未覆盖分区"></svg><div id="overlapOutput" class="output-summary"></div><div class="caption">蓝色虚线为相机 ROI；T/C 标记实际未被光机覆盖的分区，绿色为 3D 重合视野。仅为相机未被光机覆盖的部分标注详细尺寸；双目模式按左右相机分别编号。选择分区后，A、B、C…对应下方各边实长。</div></section></div>
+<section class="panel output-panel overlap-panel"><div class="phead"><div class="overview-plot-title"><h2>3D 重合视野 · 2D 未覆盖尺寸</h2><span class="depth-current" id="overlapDepthLabel"></span></div><button class="plot-export" data-export-plot="footprint" data-title="3D重合视野与缺边尺寸">导出此图</button></div><div class="region-controls"><label>选择标注分区<select id="regionChoice" aria-label="选择标注边长的2D未覆盖分区"></select></label><span id="regionChoiceInfo" class="small"></span></div><svg id="footprint" class="plot" role="img" aria-label="重合视野与相机实际未覆盖分区"></svg><div id="overlapOutput" class="output-summary"></div><div class="caption">蓝色虚线为相机 ROI；T/C 标记实际未被光机覆盖的分区，绿色为 3D 重合视野。仅为相机未被光机覆盖的部分标注详细尺寸；双目模式按左右相机分别编号。选择分区后，A、B、C…对应下方各边实长。</div></section></div>
 <section id="depthComparison" class="panel depth-comparison" aria-label="工作截面对照">
 <table id="depthTabs" aria-label="工作截面对照，选择截面查看视野">
 <thead><tr><th scope="col">工作截面</th><th scope="col">WD (mm)</th><th scope="col" id="depthCoverageHeading">投影覆盖 ROI</th><th scope="col">最小余量 (mm)</th><th scope="col">对应角点</th></tr></thead>
@@ -516,7 +597,7 @@ body:has(.fov-toolbar #toast:not(:empty)) #lineMain .content > #lineStatus:not(.
 
 <div id="printParams" class="panel" style="display:none"></div><section class="panel"><div class="phead"><h2>模型与使用说明</h2><span class="small">一阶几何估算</span></div><div class="body note"><p><b>针孔近似与薄透镜：</b>光心后移量沿光轴计量，正值表示位于镜头前端后方。针孔模式用该位置作投影中心；理想薄透镜模式将它近似为物方主面。实际复合镜头需标定。</p><p><b>已知参考倍率：</b>在给定工作距离用倍率确定画幅，不使用光心后移量。名义焦距只作记录；离开参考平面的视野仍采用等效中心投影近似。</p><p><b>TR：</b>TR=投射距离/正投影宽度，联动公式 f投影=TR×DMD有效宽。倾斜平面的实际梯形包络另行计算。</p><p><b>工作平面：</b>从相机镜头前端沿光轴输入到近端、中间和远端平面的距离。切换时保持参考成像状态，仅计算几何视野。</p><p><b>视场角：</b>X × Y 为镜头出射的幅面角，由幅面边缘与焦距的 atan 计算，包含幅面偏心，与工作距离和安装倾角无关。ROI 开窗与全幅不同时分别给出两组数值；相机取当前成像模型的有效焦距，光机取 TR 联动后的等效焦距。</p><p><b>物方像素间距：</b>正视矩形按各设备沿光轴距离、有效焦距与像素尺寸估算，忽略工作平面倾斜造成的局部倍率变化；考虑倾斜时把像素两条边缘投射到当前工作平面取实长，分别采样左侧、光轴列、右侧。单位 mm/像素，属于几何点间距，不是测量精度。</p><p><b>四角投影余量：</b>相机 ROI 四角到光机投影边界的最短距离，沿当前工作平面按有限边界线段测量；正值为投影内余量，贴边为 0，负值为超出。双目分别判断左右相机，不要求共同视野覆盖单侧 ROI。</p><p><b>共同视野占用像素：</b>把共同视野顶点按当前姿态反投影回各设备完整画幅，数 X / Y 方向实际跨越的像素数，不做尺寸除间距的估算；倾斜造成的两端倍率差异自然包含在内。无共同视野时不显示。</p></div></section>
 
-</div></main><div class="bottom">3D 视觉视野规划 v10.0 · 完全离线运行 · 长度 mm / 面积 mm² / 角度 °</div>
+</div></main><div class="bottom">3D 视觉视野规划 v10.5 · 完全离线运行 · 长度 mm / 面积 mm² / 角度 °</div>
 <script>
 /* First-order central projection and convex footprint intersection. Units: mm, deg. */
 (function(root){
@@ -941,17 +1022,28 @@ ${field('camera.w','Sensor 长 / X (mm)','.001')}${field('camera.h','Sensor 宽 
 </div><p class="small" id="sensorInfo"></p><details class="param-help"><summary>Sensor 联动规则</summary><p class="editor-hint">改像元或像素数 → 更新毫米尺寸；改毫米尺寸 → 反算像元并更新另一边。X / Y 方向固定。</p></details></div><div class="roi-editor wide"><div class="editor-heading"><strong>ROI 开窗</strong><div class="editor-actions"><span class="small">自动居中</span><button id="fullROI" type="button">恢复全幅</button></div></div><p id="roiSensorInfo" class="small"></p><div class="fields" id="roiFields"></div><details class="param-help"><summary>ROI 坐标说明</summary><p class="editor-hint">开窗自动居中；像素数为奇数时，起点取整到左上侧。裁剪尺寸按像素比例换算。</p></details></div></div>
 
 </div>
-<details class="param-help"><summary>相机模型说明</summary><p id="cameraModelInfo" class="small"></p></details><details><summary>其他姿态与幅面偏心</summary><div class="fields">${field('camera.pitch','Y 方向俯仰 (°)')}${field('camera.ox','幅面中心偏心 X (mm)','.01')}${field('camera.oy','幅面中心偏心 Y (mm)','.01')}</div></details>`;
+<details class="param-help"><summary>相机模型说明</summary><p id="cameraModelInfo" class="small"></p></details><details><summary>其他姿态与幅面偏心<span class="pose-summary" id="cameraPoseSummary"></span></summary><div class="fields">${field('camera.pitch','Y 方向俯仰 (°)')}${field('camera.ox','幅面中心偏心 X (mm)','.01')}${field('camera.oy','幅面中心偏心 Y (mm)','.01')}</div></details>`;
 $('projectorFields').innerHTML=`<div class="fields">${field('projector.tr','投射比 TR = 距离 / 宽','0.001')}${field('projector.f','投影等效焦距 (mm)','.001')}
 
 ${field('projector.w','DMD 有效宽 (mm)','.001')}${field('projector.h','DMD 有效高 (mm)','.001')}${field('projector.nx','投影横向像素数 / X (px)','1')}${field('projector.ny','投影纵向像素数 / Y (px)','1')}<label>参考垂直距离 (mm)<input id="projectorNormalWD" type="number" readonly title="光机光心到参考平面的垂直距离，自动联动"></label><label>参考沿光轴距离 (mm)<input id="projectorAxisWD" type="number" readonly title="沿光机光轴到参考平面的距离，包含倾斜影响，自动联动"></label>${field('projector.yaw','X–Z 倾角 (°)')}
-</div><details class="param-help"><summary>TR 与投影说明</summary><p class="small" id="projectorInfo"></p></details><details><summary>更多姿态与投影偏心</summary><div class="fields">${field('projector.pitch','Y 方向俯仰 (°)')}${field('projector.ox','幅面中心偏心 X (mm)','.01')}${field('projector.oy','幅面中心偏心 Y (mm)','.01')}</div></details>`;
+</div><details class="param-help"><summary>TR 与投影说明</summary><p class="small" id="projectorInfo"></p></details><details><summary>更多姿态与投影偏心<span class="pose-summary" id="projectorPoseSummary"></span></summary><div class="fields">${field('projector.pitch','Y 方向俯仰 (°)')}${field('projector.ox','幅面中心偏心 X (mm)','.01')}${field('projector.oy','幅面中心偏心 Y (mm)','.01')}</div></details>`;
 function linkProjector(changed){const d=state.projector;if(changed==='projector.tr')d.f=d.tr*d.w;else d.tr=d.f/d.w;d.link='f';for(const k of ['f','tr','link']){const e=document.querySelector('[data-path="projector.'+k+'"]');if(e&&e!==document.activeElement)e.value=Number.isFinite(d[k])||typeof d[k]==='string'?displayNumber(d[k],'projector.'+k):'';}}
 
 function sensorParts(side=1){const right=side===2;return {c:right?state.camera2:state.camera,r:right?state.roi2:state.roi,cp:right?'camera2':'camera',rp:right?'roi2':'roi',suffix:right?'2':'',counts:right?sensorLastCounts2:sensorLastCounts};}
 function syncSensorInputs(side=1){const {cp,rp}=sensorParts(side);for(const key of [cp+'.pixelPitch',cp+'.w',cp+'.h',rp+'.nx',rp+'.ny',rp+'.rw',rp+'.rh',rp+'.rx',rp+'.ry']){const e=document.querySelector('[data-path="'+key+'"]');if(e&&e!==document.activeElement){const v=get(state,key);e.value=Number.isFinite(v)?displayNumber(v,key):'';}}}
 function linkSensor(changed,side=1){const {c,r,cp,rp,counts}=sensorParts(side),validCount=v=>Number.isInteger(v)&&v>0;for(const [count,size,start] of [['nx','rw','rx'],['ny','rh','ry']])if(changed===rp+'.'+count&&validCount(r[count])){if(r[start]===0&&r[size]===counts[count])r[size]=r[count];counts[count]=r[count];}if(changed===cp+'.w')c.pixelPitch=validCount(r.nx)?c.w*1000/r.nx:NaN;if(changed===cp+'.h')c.pixelPitch=validCount(r.ny)?c.h*1000/r.ny:NaN;if(changed!==cp+'.w')c.w=validCount(r.nx)?r.nx*c.pixelPitch/1000:NaN;if(changed!==cp+'.h')c.h=validCount(r.ny)?r.ny*c.pixelPitch/1000:NaN;syncSensorInputs(side);sensorInfo(side);}
 function sensorInfo(side=1){const {c,r,suffix}=sensorParts(side),p=c.pixelPitch,consistent=Number.isFinite(p)&&p>0&&Math.abs(c.w-r.nx*p/1000)<1e-7&&Math.abs(c.h-r.ny*p/1000)<1e-7;$('sensorInfo'+suffix).textContent=consistent?fmt(p,4)+' μm × '+r.nx+' / '+r.ny+' px = '+fmt(c.w,4)+' × '+fmt(c.h,4)+' mm':'参数尚未一致：编辑任一 Sensor 参数后按方形像元统一联动。';$('sensorInfo'+suffix).classList.toggle('sensor-warning',!consistent);$('roiSensorInfo'+suffix).textContent='全幅像素：'+r.nx+' × '+r.ny+' px（由相机 Sensor 联动区设置）。';}
+
+function renderPoseSummary(id,device){
+ const parts=[];
+ if(device){
+  for(const [key,label,unit] of [['pitch','俯仰','°'],['ox','X 偏心',' mm'],['oy','Y 偏心',' mm']]){
+   const value=device[key];
+   if(Number.isFinite(value)&&value!==0)parts.push(label+' '+(value>0?'+':'')+value+unit);
+  }
+ }
+ $(id).textContent=parts.join(' · ');
+}
 
 function modelControls(){for(const [c,suffix] of [[state.camera,''],[state.camera2,'2']]){if(!$('singleMag'+suffix))continue;$('singleMag'+suffix).hidden=c.model!=='magnification';$('originOffsetField'+suffix).hidden=c.model==='magnification';}updateSceneUI();}
 
@@ -1034,7 +1126,9 @@ function syncWorkPlanes(errors={}){
   button.disabled=!item;button.setAttribute('aria-pressed',String(active));
   button.setAttribute('aria-label',item?planeLabel(item.plane)+'，投影覆盖 '+item.coverage+'，最小余量 '+margin.textContent+' 毫米，'+item.locations.join('，'):button.textContent+'，'+corners.textContent);
  }
- $('activeDepthLabel').textContent=currentPlane?planeLabel(currentPlane)+(endpointDraft?' · 距离待更新':''):'';
+ const label=currentPlane?planeLabel(currentPlane)+(endpointDraft?' · 距离待更新':''):'';
+ $('activeDepthLabel').textContent=label;
+ $('overlapDepthLabel').textContent=label;
 }
 function planeLabel(plane){return plane.label+' · WD '+fmt(plane.wd)+' mm';}
 function sync(){endpointDraft=null;normalizeInputs(state);syncMountWD();document.querySelectorAll('[data-path]').forEach(e=>e.value=displayNumber(get(state,e.dataset.path),e.dataset.path));syncNominalWD(true);for(const [key,id] of endpointInputs)$(id).value=state.depthRange[key];sensorLastCounts={nx:state.roi.nx,ny:state.roi.ny};sensorLastCounts2={nx:state.roi2.nx,ny:state.roi2.ny};sensorInfo();sensorInfo(2);linkProjector('');modelControls();}
@@ -1078,6 +1172,7 @@ function upgradeSampleROI(s){for(const setup of [s,s.setups?.mono,s.setups?.ster
 try{const stored=(localStorage.getItem('structured-light-fov-v10')||localStorage.getItem('structured-light-fov-v9')||localStorage.getItem('structured-light-fov-v8')||localStorage.getItem('structured-light-fov-v7')||localStorage.getItem('structured-light-fov-v6')||localStorage.getItem('structured-light-fov-v5')||localStorage.getItem('structured-light-fov-v4'));if(stored){const x=loadState(JSON.parse(stored));FOV.solve(x);state=x;toast('已恢复上次有效参数');}}catch(e){}
 const depthMethods=[['① 标准几何','远距近似'],['② 超焦距','原脚本近似'],['③ 有限共轭','薄透镜']];
 const depthMetrics=[['near','最近清晰距离'],['far','最远清晰距离'],['front','前景深'],['back','后景深']];
+const depthTableRows=[...depthMetrics,['hyperfocal','超焦距'],['total','总景深']];
 function depthControl(key,name,label){
  const p=key+'.dof.'+name;
  return `<label for="${p}">${label}</label><input id="${p}" data-path="${p}" type="number" step="any">`;
@@ -1087,7 +1182,7 @@ const depthGroups=['camera','camera2'].map((key,index)=>{
  group.className='dof-group'+(index?' stereo-only':'');
  group.hidden=Boolean(index);
  group.innerHTML=`
-  <div class="dof-group-head"><h3></h3></div>
+  <div class="dof-group-head"><h3 id="${key}-dof-title"></h3></div>
   <div class="dof-controls">
    <div class="dof-input">${depthControl(key,'focalLength','镜头焦距 (mm)')}</div>
    <div class="dof-input">${depthControl(key,'focusDistance','轴向对焦物距 (mm)')}</div>
@@ -1101,7 +1196,15 @@ const depthGroups=['camera','camera2'].map((key,index)=>{
    </div>
   </div>
   <p class="small dof-datum"></p><p class="small dof-error" role="status" hidden></p>
-  <div class="dof-results"></div>
+  <div class="dof-results">
+   <table aria-labelledby="cameraDofTitle ${key}-dof-title">
+    <thead><tr><th scope="col">指标</th>${depthMethods.map(([title,subtitle])=>
+     `<th scope="col">${title}<small>${subtitle}</small></th>`).join('')}</tr></thead>
+    <tbody>${depthTableRows.map(([field,label])=>
+     `<tr${field==='total'?' class="dof-total"':''}><th scope="row">${label}</th>${depthMethods.map((_,i)=>
+      field==='hyperfocal'&&i!==1?'<td aria-label="不适用" title="此方法不单列超焦距">—</td>':`<td data-dof-${field}>—</td>`).join('')}</tr>`).join('')}</tbody>
+   </table>
+  </div>
   <div class="dof-diffraction">
    <h4>对焦处衍射斑 <span class="small">像方 · 艾里斑</span></h4>
    <dl><div><dt>艾里斑直径</dt><dd data-diffraction-diameter></dd></div>
@@ -1111,7 +1214,7 @@ const depthGroups=['camera','camera2'].map((key,index)=>{
    <p class="small dof-diffraction-error dof-error" role="status" hidden></p>
   </div>`;
  $('cameraDofGroups').append(group);
- return {key,group,pixelsInput:$(key+'.dof.cocPixels'),diameterInput:$(key+'.dof.cocUm')};
+ return {key,group,resultRows:group.querySelector('.dof-results tbody').rows,pixelsInput:$(key+'.dof.cocPixels'),diameterInput:$(key+'.dof.cocUm')};
 });
 function depthValue(value){
  if(value===Infinity)return '∞';
@@ -1141,7 +1244,7 @@ function renderDiffraction(group,params,spot,message){
  warning.textContent=message;
 }
 function renderCameraDepth(){
- for(const [index,{key,group,pixelsInput,diameterInput}] of depthGroups.entries()){
+ for(const [index,{key,group,resultRows,pixelsInput,diameterInput}] of depthGroups.entries()){
   if(group.hidden)continue;
   const params=state[key].dof;
   const {byCount,blur,values,depthError,spot,spotError}=cameraDepthResults(params);
@@ -1152,13 +1255,12 @@ function renderCameraDepth(){
   const warning=group.querySelector('.dof-error');
   warning.hidden=!depthError;
   warning.textContent=depthError;
-  group.querySelector('.dof-results').innerHTML=depthMethods.map(([title,subtitle],i)=>{
-   const value=values[i];
-   return `<article class="dof-result"><h4>${title}</h4><div class="dof-method small">${subtitle}</div>
-    <div class="dof-total"><span>总景深</span><strong data-dof-total>${depthValue(value?.total)}</strong></div>
-    <dl>${depthMetrics.map(([name,label])=>`<div><dt>${label}</dt><dd data-dof-${name}>${depthValue(value?.[name])}</dd></div>`).join('')}</dl>
-    ${i===1?`<div class="dof-hyperfocal small">超焦距 <span>${depthValue(value?.hyperfocal)}</span></div>`:''}</article>`;
-  }).join('');
+  depthTableRows.forEach(([field],row)=>{
+   const cells=resultRows[row].cells;
+   for(let i=0;i<depthMethods.length;i++){
+    cells[i+1].textContent=depthValue(values[i]?.[field]);
+   }
+  });
   renderDiffraction(group,params,spot,spotError);
  }
 }
@@ -1426,7 +1528,6 @@ function sectionTilt(origin,axis,radius,color){
 }
 function drawDepthSection(depthSections){
  const {svg,W,H}=initSvg('layout');
- $('view3d').classList.remove('active');$('viewSide').classList.add('active');
  $('layoutCaption').textContent='X–Z 光路截面（Y=0）。实线为截面边界，彩色虚线为光轴投影。角度相对工作平面法线；WD 沿相机光轴自镜头前端量取'+(isStereo()?'（左相机）':'')+'。绿色为共同覆盖。';
  const sections=depthSections.filter(section=>section.result);
  if(!sections.length){svg.innerHTML='';return;}
@@ -1508,7 +1609,7 @@ function drawDepthSection(depthSections){
  });
  svg.innerHTML=out+'</g>';
 }
-function drawMonoLayout(){const {svg,W,H}=initSvg('layout');$('view3d').classList.toggle('active',view==='3d');$('viewSide').classList.toggle('active',view==='side');$('layoutCaption').textContent=view==='3d'?'拖动旋转视角；细线为边界光线，虚线为光轴；两个光心之间为直线基线。':'沿 Y 方向投影到 X–Z 的侧视图，全部角点光线均投影显示；不是 Y=0 截面。';if(!result){svg.innerHTML='';return;}const r=result,z=currentPlane.z;
+function drawMonoLayout(){const {svg,W,H}=initSvg('layout');$('layoutCaption').textContent=view==='3d'?'拖动旋转视角；细线为边界光线，虚线为光轴；两个光心之间为直线基线。':'沿 Y 方向投影到 X–Z 的侧视图，全部角点光线均投影显示；不是 Y=0 截面。';if(!result){svg.innerHTML='';return;}const r=result,z=currentPlane.z;
 const proj=q=>view==='side'?[q[0],q[2]]:[q[0]*Math.cos(az)-q[1]*Math.sin(az),(q[0]*Math.sin(az)+q[1]*Math.cos(az))*Math.sin(el)+q[2]*Math.cos(el)];
 const all=[r.camera.pos,r.projector.pos,...r.camera.points.map(p=>[...p,z]),...r.projector.points.map(p=>[...p,z])];const t=fit(all.map(proj),W,H,60),p=q=>t.p(proj(q));let out=view==='side'?grid(t,W,H,'X (mm)','Z (mm)'):'';
 const planeBounds=FOV.metrics([...r.camera.points,...r.projector.points]).bounds;
@@ -1520,10 +1621,15 @@ if(Math.abs(r.optical.originOffset)>1e-8){const front=r.camera.pos.map((v,i)=>v+
 if(view==='3d'){const origin=[46,H-36],k=22;for(const [q,label,c] of [[[k,0,0],'X','#7994a5'],[[0,k,0],'Y','#7994a5'],[[0,0,k],'Z','#7994a5']]){let d=proj(q),end=[origin[0]+d[0],origin[1]-d[1]];out+=line(origin,end,c)+text([end[0],end[1]-5],label);}}svg.innerHTML=out;}
 
 function drawLayout(depthSections=workPlanes){
+ for(const [id,key] of [['view3d','3d'],['viewSide','side']]){
+  const button=$(id),active=view===key;
+  button.classList.toggle('active',active);
+  button.setAttribute('aria-pressed',String(active));
+ }
  $('layout').style.touchAction=view==='3d'?'none':'pan-y';
  if(view==='side')return drawDepthSection(depthSections);
  if(!isStereo())return drawMonoLayout();
- const {svg,W,H}=initSvg('layout');$('view3d').classList.toggle('active',view==='3d');$('viewSide').classList.toggle('active',view==='side');$('layoutCaption').textContent=view==='3d'?'光机居中、左右各一台相机；每台设备四条实线连接全幅四个角点，虚线为光轴。拖动旋转；点击“空间示意”恢复视角。':'X–Z侧视投影；各设备四条角点连线均保留，前后角点的投影可能重叠。';if(!result){svg.innerHTML='';return;}
+ const {svg,W,H}=initSvg('layout');$('layoutCaption').textContent=view==='3d'?'光机居中、左右各一台相机；每台设备四条实线连接全幅四个角点，虚线为光轴。拖动旋转；点击“空间示意”恢复视角。':'X–Z侧视投影；各设备四条角点连线均保留，前后角点的投影可能重叠。';if(!result){svg.innerHTML='';return;}
  const r=result,z=currentPlane.z,devices=[{d:r.projector,color:'#ff9500',fill:'#ff950012',name:'光机',key:'projector'},{d:r.camera,color:'#007aff',fill:'#007aff0a',name:'左相机',key:'left'},{d:r.camera2,color:'#af52de',fill:'#af52de0a',name:'右相机',key:'right'}];
  const project=q=>view==='side'?[q[0],q[2]]:[q[0]*Math.cos(az)-q[1]*Math.sin(az),(q[0]*Math.sin(az)+q[1]*Math.cos(az))*Math.sin(el)+q[2]*Math.cos(el)];
  const all=devices.flatMap(({d})=>[d.pos,...d.points.map(p=>[...p,z])]),t=fit(all.map(project),W,H,64),p=q=>t.p(project(q)),b=FOV.metrics(devices.flatMap(({d})=>d.points)).bounds;
@@ -1585,6 +1691,9 @@ function update(){
   $('error').hidden=false;
   $('error').textContent=e.message+'。已清空计算结果。';
  }
+ renderPoseSummary('cameraPoseSummary',result&&state.camera);
+ renderPoseSummary('cameraPoseSummary2',result?.rightDevice);
+ renderPoseSummary('projectorPoseSummary',result&&state.projector);
  syncWorkPlanes(planeErrors);
  renderCameraDepth();
  $('modelInfo').hidden=!result;
@@ -1626,7 +1735,7 @@ function appendDepthCSV(rows,params,cameraName){
 }
 
 $('csv').onclick=()=>{
- if(!result)return;const r=result,stereo=isStereo(),rows=[['3D 视觉视野规划 V10.3'],['系统模式',stereo?'双目':'单目'],['3D视野定义',stereo?'左 ROI ∩ 右 ROI ∩ 光机投影':'相机 ROI ∩ 光机投影'],['参数','值']];
+ if(!result)return;const r=result,stereo=isStereo(),rows=[['3D 视觉视野规划 V10.5'],['系统模式',stereo?'双目':'单目'],['3D视野定义',stereo?'左 ROI ∩ 右 ROI ∩ 光机投影':'相机 ROI ∩ 光机投影'],['参数','值']];
  function flatten(o,p=''){for(const [k,v] of Object.entries(o)){if(k==='setups')continue;const key=p?p+'.'+k:k;if(v&&typeof v==='object')flatten(v,key);else rows.push([key,v]);}}flatten(state);
  rows.push([],['工作截面对照','沿轴 WD (mm)',stereo?'投影覆盖左 / 右 ROI':'投影覆盖 ROI','最小有符号余量 (mm)','对应角点']);
  for(const plane of workPlanes){
@@ -1924,8 +2033,15 @@ let noteIndex=0;for(const panel of main.querySelectorAll('.parameter-grid>.panel
  panel.querySelector('.body').append(notes);
  const button=document.createElement('button');button.type='button';button.className='parameter-help-trigger';button.textContent='?';button.title='查看参数与联动说明';button.setAttribute('aria-label','查看'+panel.querySelector('h2').textContent+'说明');button.setAttribute('aria-controls',notes.id);button.setAttribute('aria-expanded','false');button.onclick=()=>{notes.hidden=!notes.hidden;button.setAttribute('aria-expanded',String(!notes.hidden));};panel.querySelector('.phead').append(button);
 }
-for(const panel of plots.children){
- const head=panel.querySelector('.phead'),tools=document.createElement('div');tools.className='overview-plot-tools';for(const child of [...head.children])if(!child.matches('h2,.overview-plot-title'))tools.append(child);head.append(tools);
+for(const panel of [...plots.children,overlap]){
+ const head=panel.querySelector('.phead');
+ const tools=document.createElement('div');
+ tools.className='overview-plot-tools';
+ for(const child of [...head.children]){
+  if(!child.matches('h2,.overview-plot-title'))tools.append(child);
+ }
+ head.append(tools);
+ if(panel===overlap)continue;
  const caption=panel.querySelector(':scope>.caption');if(caption){const help=document.createElement('details');help.className='diagram-help';const summary=document.createElement('summary');summary.textContent='图示说明';help.append(summary,caption);panel.append(help);}
 }
 // Readable display values do not round the underlying parameter or export data.
@@ -2005,8 +2121,6 @@ const style=document.createElement('style');style.id='overview-first-style';styl
 #structuredMain .content{gap:10px}
 #structuredMain .content>#modelInfo{background:transparent;border:0;padding:0 3px;border-radius:0;color:#8e8e93;line-height:18px;font-size:11px}
 #structuredMain .plots{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px;align-items:stretch}
-#structuredMain .plots>.panel>.phead{min-height:48px;padding:9px 12px;gap:6px;flex-wrap:wrap}#structuredMain .plots h2{font-size:13px;white-space:nowrap}
-.overview-plot-tools{display:flex;align-items:center;justify-content:flex-end;gap:4px;flex-wrap:wrap}.overview-plot-tools .tabs{padding:2px;gap:1px}.overview-plot-tools .tabs button{padding:4px 6px}.overview-plot-tools>.plot-zoom,.overview-plot-tools>.plot-export{padding:5px 7px;font-size:10px}
 #structuredMain .plots .plot,#structuredMain .plots .layout-panel>#layout{height:var(--overview-plot-height);min-height:0;flex:none}
 .diagram-help{margin:0;flex:none;border-top:1px solid #f3f3f6;border-radius:0}.diagram-help>summary{padding:5px 12px;font-size:10px;line-height:15px}.diagram-help>.caption{margin:0;padding:0 12px 10px;font-size:10px}.plots .layout-panel,.plots .combined-panel{justify-content:flex-start}.plots .diagram-help{margin-top:auto}
 .overview-measures>.phead{padding:10px 14px;flex-wrap:wrap;gap:8px}.overview-measures h2{font-size:13px}.overview-measures .legend{font-size:10px;padding:0;gap:10px}.overview-measures>.combined-summaries,.stereo-mode .overview-measures>.combined-summaries{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr));gap:6px}.overview-measures>.combined-summaries>div:last-child{grid-column:auto}
@@ -2015,19 +2129,18 @@ const style=document.createElement('style');style.id='overview-first-style';styl
 #structuredMain .parameter-grid .fields{row-gap:8px}.parameter-help-trigger{flex:none;width:20px;height:20px;padding:0;border:1px solid #e6e6ec;border-radius:50%;background:#f7f7fa;color:#8e8e93;font-size:11px;line-height:18px}.parameter-help-trigger[aria-expanded="true"]{color:#007aff;border-color:#b9d6ff;background:#f1f7ff}
 .parameter-notes{margin-top:10px;border-top:1px solid #efeff4;padding-top:4px;font-size:11px;color:#8e8e93;line-height:1.7}.parameter-notes[hidden]{display:none!important}.parameter-notes h4{font-size:11px;font-weight:600;color:#6e6e78;margin:7px 0 3px}.parameter-notes p,.parameter-notes .small{font-size:11px;line-height:1.7;margin:4px 0}.parameter-notes .caption{padding:0}.parameter-notes>section+section{margin-top:8px}
 .expanded-plot>.overview-measures{border:0;border-radius:0;box-shadow:none}.expanded-plot>.overview-measures>.combined-summaries{grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr))}
-@media(min-width:761px) and (max-width:1100px){#structuredMain .plots>.panel>.phead{height:73px;min-height:73px;align-items:stretch;justify-content:center;flex-direction:column}#structuredMain .plots>.panel>.phead h2{flex:none}.overview-plot-tools{flex-wrap:nowrap}.overview-plot-tools .tabs{flex:none}}
-@media(max-width:760px){#structuredMain .plots{grid-template-columns:1fr}#structuredMain .plots>.panel>.phead{min-height:48px}#structuredMain .overview-measures .camera-summary-row{grid-template-columns:minmax(0,1fr) 140px;gap:14px}#structuredMain .overview-measures .clearance-grid{gap:8px 10px}}
+@media(max-width:760px){#structuredMain .plots{grid-template-columns:1fr}#structuredMain .overview-measures .camera-summary-row{grid-template-columns:minmax(0,1fr) 140px;gap:14px}#structuredMain .overview-measures .clearance-grid{gap:8px 10px}}
 @media print{#structuredMain .plots .plot,#structuredMain .plots .layout-panel>#layout{height:300px}.diagram-help{display:none}.overview-measures{break-inside:avoid}.parameter-help-trigger{display:none}}
 /* One overview canvas and card height, shared by both product lines. */
 #structuredMain,#lineMain{--overview-plot-height:clamp(260px,44dvh,470px)}
 #lineMain .content{gap:10px}#lineMain .laser-plots{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px;align-items:stretch}
 #structuredMain .content>#modelInfo,#lineMain .content>#lineStatus:not(.bad){height:18px;min-height:18px;line-height:18px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;background:transparent;border:0;padding:0 3px;font-size:11px;color:#8e8e93;border-radius:0}
-#lineMain .laser-panel{display:flex;flex-direction:column;min-width:0}#lineMain .laser-panel>.phead{height:48px;min-height:48px;padding:9px 12px;gap:6px;flex:none;flex-wrap:wrap}#lineMain .laser-panel h2{font-size:13px;white-space:nowrap;flex:1}
-#lineMain .line-plot{height:var(--overview-plot-height);min-height:0;flex:none}#lineMain .laser-panel>.diagram-help{margin-top:auto}.line-plot-actions{gap:4px}.line-plot-actions button{padding:5px 7px;font-size:10px}
+#lineMain .laser-panel{display:flex;flex-direction:column;min-width:0}
+#lineMain .line-plot{height:var(--overview-plot-height);min-height:0;flex:none}#lineMain .laser-panel>.diagram-help{margin-top:auto}
 .line-overview-measures>.phead{padding:10px 14px}.line-overview-measures h2{font-size:13px}.line-measure-columns{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.line-measure-group{min-width:0}.line-measure-group>h3{font-size:12px;line-height:16px;font-weight:600;color:#71717a;margin:10px 16px 0}.line-measure-group>.laser-info{gap:9px;padding:10px 16px 13px}.line-measure-group .laser-info strong{font-size:19px}
 .line-expanded>.line-measure-group{width:100%;align-self:stretch}
-@media(max-width:1100px){#lineMain .laser-panel>.phead{height:73px;min-height:73px;flex-direction:column;align-items:stretch;justify-content:center}#lineMain .laser-panel h2{flex:none}.line-plot-actions{justify-content:flex-end}#lineMain .laser-info{min-height:0}}
-@media(max-width:760px){#structuredMain,#lineMain{--overview-plot-height:300px}#lineMain .laser-plots{grid-template-columns:1fr}.line-measure-columns{grid-template-columns:1fr}#structuredMain .plots>.panel>.phead{height:73px;min-height:73px;flex-direction:column;align-items:stretch;justify-content:center}#structuredMain .plots>.panel>.phead h2{flex:none}.line-measure-columns{gap:0}}
+@media(max-width:1100px){#lineMain .laser-info{min-height:0}}
+@media(max-width:760px){#structuredMain,#lineMain{--overview-plot-height:300px}#lineMain .laser-plots{grid-template-columns:1fr}.line-measure-columns{grid-template-columns:1fr}.line-measure-columns{gap:0}}
 @media print{#structuredMain .plots .plot,#structuredMain .plots .layout-panel>#layout,#lineMain .line-plot{height:300px;min-height:0}.line-overview-measures{break-inside:avoid}}
 
 `;document.head.append(style);
