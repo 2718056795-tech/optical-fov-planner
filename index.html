@@ -597,7 +597,7 @@ body:has(.fov-toolbar #toast:not(:empty)) #lineMain .content > #lineStatus:not(.
 
 <div id="printParams" class="panel" style="display:none"></div><section class="panel"><div class="phead"><h2>模型与使用说明</h2><span class="small">一阶几何估算</span></div><div class="body note"><p><b>针孔近似与薄透镜：</b>光心后移量沿光轴计量，正值表示位于镜头前端后方。针孔模式用该位置作投影中心；理想薄透镜模式将它近似为物方主面。实际复合镜头需标定。</p><p><b>已知参考倍率：</b>在给定工作距离用倍率确定画幅，不使用光心后移量。名义焦距只作记录；离开参考平面的视野仍采用等效中心投影近似。</p><p><b>TR：</b>TR=投射距离/正投影宽度，联动公式 f投影=TR×DMD有效宽。倾斜平面的实际梯形包络另行计算。</p><p><b>工作平面：</b>从相机镜头前端沿光轴输入到近端、中间和远端平面的距离。切换时保持参考成像状态，仅计算几何视野。</p><p><b>视场角：</b>X × Y 为镜头出射的幅面角，由幅面边缘与焦距的 atan 计算，包含幅面偏心，与工作距离和安装倾角无关。ROI 开窗与全幅不同时分别给出两组数值；相机取当前成像模型的有效焦距，光机取 TR 联动后的等效焦距。</p><p><b>物方像素间距：</b>正视矩形按各设备沿光轴距离、有效焦距与像素尺寸估算，忽略工作平面倾斜造成的局部倍率变化；考虑倾斜时把像素两条边缘投射到当前工作平面取实长，分别采样左侧、光轴列、右侧。单位 mm/像素，属于几何点间距，不是测量精度。</p><p><b>四角投影余量：</b>相机 ROI 四角到光机投影边界的最短距离，沿当前工作平面按有限边界线段测量；正值为投影内余量，贴边为 0，负值为超出。双目分别判断左右相机，不要求共同视野覆盖单侧 ROI。</p><p><b>共同视野占用像素：</b>把共同视野顶点按当前姿态反投影回各设备完整画幅，数 X / Y 方向实际跨越的像素数，不做尺寸除间距的估算；倾斜造成的两端倍率差异自然包含在内。无共同视野时不显示。</p></div></section>
 
-</div></main><div class="bottom">3D 视觉视野规划 v10.6 · 完全离线运行 · 长度 mm / 面积 mm² / 角度 °</div>
+</div></main><div class="bottom">3D 视觉视野规划 v10.6.1 · 完全离线运行 · 长度 mm / 面积 mm² / 角度 °</div>
 <script>
 /* First-order central projection and convex footprint intersection. Units: mm, deg. */
 (function(root){
@@ -1735,7 +1735,7 @@ function appendDepthCSV(rows,params,cameraName){
 }
 
 $('csv').onclick=()=>{
- if(!result)return;const r=result,stereo=isStereo(),rows=[['3D 视觉视野规划 V10.6'],['系统模式',stereo?'双目':'单目'],['3D视野定义',stereo?'左 ROI ∩ 右 ROI ∩ 光机投影':'相机 ROI ∩ 光机投影'],['参数','值']];
+ if(!result)return;const r=result,stereo=isStereo(),rows=[['3D 视觉视野规划 V10.6.1'],['系统模式',stereo?'双目':'单目'],['3D视野定义',stereo?'左 ROI ∩ 右 ROI ∩ 光机投影':'相机 ROI ∩ 光机投影'],['参数','值']];
  function flatten(o,p=''){for(const [k,v] of Object.entries(o)){if(k==='setups')continue;const key=p?p+'.'+k:k;if(v&&typeof v==='object')flatten(v,key);else rows.push([key,v]);}}flatten(state);
  rows.push([],['工作截面对照','沿轴 WD (mm)',stereo?'投影覆盖左 / 右 ROI':'投影覆盖 ROI','最小有符号余量 (mm)','对应角点']);
  for(const plane of workPlanes){
@@ -1960,10 +1960,18 @@ function drawSide(){
  if(!r){svg.innerHTML='';return;}
  const side=q=>[q[0],q[2]],topWorld=[0,r.zTop],bottomWorld=[0,r.zBottom];
  const world=[side(r.camera),side(r.front),side(r.laserFront),side(r.axisHit),topWorld,bottomWorld];
- const map=fitMap(world,W,H,[W<380?72:84,W<380?57:72,63,60]);
- const [C,F,L,O,top,bottom]=world.map(map);
- const blue='#007aff',red='#cf4552',green='#008b76',ink='#53667b',guide='#a2adba';
  const theta=r.theta*Math.PI/180,sn=Math.sin(theta),cs=Math.cos(theta);
+ // In X–Z the outward normal to the optical axis is (cos θ, -sin θ).
+ // The largest projection of the three cone vertices defines its outside edge.
+ const coneWorld=[world[0],topWorld,bottomWorld];
+ const edgeDistance=Math.max(...coneWorld.map(([x,z])=>x*cs-z*sn));
+ const railPoint=([x,z])=>[x+edgeDistance*cs,z-edgeDistance*sn];
+ const railFront=railPoint(world[1]),railZero=railPoint(world[3]);
+ const wdGap=Math.min(32,Math.max(24,W*.06));
+ const map=fitMap([...world,railFront,railZero],W,H,
+  [W<380?72:84,(W<380?41:54)+wdGap*cs,63,60+wdGap*sn]);
+ const [C,F,L,O,top,bottom]=world.map(map),cone=[C,top,bottom];
+ const blue='#007aff',red='#cf4552',green='#008b76',ink='#53667b',guide='#a2adba';
  const normal=[cs,sn],shift=(pt,v,k)=>[pt[0]+v[0]*k,pt[1]+v[1]*k];
  const group=(name,body)=>'<g data-line-dim="'+name+'">'+body+'</g>';
  const measure=(pt,qt)=>sectionDimension(pt,qt,ink);
@@ -1979,8 +1987,17 @@ function drawSide(){
   const tip=[L[0],L[1]+17];
   out+=ln([tip[0]-3,tip[1]-5],tip,red)+ln([tip[0]+3,tip[1]-5],tip,red);
  }
- const wdA=shift(F,normal,12),wdB=shift(O,normal,12),along=mid(wdA,wdB);
- out+=group('axial-wd',ln(F,wdA,guide)+ln(O,wdB,guide)+measure(wdA,wdB));
+ const wdA=shift(map(railFront),normal,wdGap),wdB=shift(map(railZero),normal,wdGap),along=mid(wdA,wdB);
+ // A witness line points back to the true endpoint, with its in-cone part omitted.
+ const axial=p=>(p[0]-O[0])*sn-(p[1]-O[1])*cs;
+ const across=p=>(p[0]-O[0])*cs+(p[1]-O[1])*sn;
+ const axisSection=cone.map(p=>[axial(p),across(p)]);
+ function wdWitness(origin,end){
+  const cut=FOV.sliceSegment(axisSection,axial(origin),0);
+  const start=Math.max(0,(cut?cut[1][1]:0)-across(origin))+3;
+  return ln(shift(origin,normal,start),end,guide,'3 3');
+ }
+ out+=group('axial-wd',wdWitness(F,wdA)+wdWitness(O,wdB)+measure(wdA,wdB));
  const baseA=[O[0],baseY],baseB=[C[0],baseY];
  out+=group('baseline',ln(bottom,baseA,guide,'2 4')+ln(C,baseB,guide,'2 4')+
   measure(baseA,baseB)+tx([Math.max(82,Math.min(W-82,(C[0]+O[0])/2)),H-10],
@@ -2026,10 +2043,18 @@ function drawSide(){
   for(const dy of [-16,20,-33,38,-52,55]){
    for(const dx of [-width/2-9,width/2+9,0])candidates.push([ax+dx,ay+dy]);
   }
+  const isWD=dimName==='axial-wd';
+  // The strip above the baseline also fits a horizontal reading on narrow plots.
+  if(isWD)candidates.push([ax,baseY-5],[W*.5,baseY-5]);
   let best;
   for(const [x,y] of candidates){
    const left=Math.max(5,Math.min(W-32-width,x-width/2)),base=Math.max(14,Math.min(baseY-4,y));
    const box=[left-2,base-13,left+width+2,base+4];
+   if(isWD){
+    const [x0,y0,x1,y1]=box,margin=10;
+    const keepClear=[[x0-margin,y0-margin],[x1+margin,y0-margin],[x1+margin,y1+margin],[x0-margin,y1+margin]];
+    if(FOV.intersect(cone,keepClear).length)continue;
+   }
    const overlap=boxes.reduce((sum,b)=>sum+Math.max(0,Math.min(box[2],b[2]+2)-Math.max(box[0],b[0]-2))*
      Math.max(0,Math.min(box[3],b[3]+2)-Math.max(box[1],b[1]-2)),0);
    if(!best||overlap<best.overlap)best={left,base,box,overlap};
@@ -2046,7 +2071,10 @@ function drawSide(){
  note('沙姆镜头光心',blue,[[C[0]+17,C[1]-12],[C[0]+18,labelLane-10],[C[0]+20,labelLane+5]],C);
  const arcMid=[C[0]-radius*Math.sin(theta/2),C[1]+radius*Math.cos(theta/2)];
  note('θ '+N(r.theta,1)+'°',blue,[[arcMid[0]-19,arcMid[1]+11],[C[0]+28,C[1]+30],[C[0]+4,labelLane-16]],arcMid,'tilt');
- note('沿轴 WD '+N(r.frontDistance)+' mm',ink,[[along[0]+46,along[1]+11],[along[0]+37,along[1]+28],[along[0]-16,along[1]+34]],along,'axial-wd');
+ const wdText='沿轴 WD '+N(r.frontDistance)+' mm';
+ const wdLabelOffset=ctx.measureText(wdText).width*cs/2+9*sn+6;
+ const wdCaption=shift(along,normal,wdLabelOffset);
+ note(wdText,ink,[[wdCaption[0],wdCaption[1]+3],[along[0]+48,along[1]+20],[along[0],along[1]+22]],along,'axial-wd');
  const frontMid=mid(L,F);
  note('前端同高',ink,[[frontMid[0],frontMid[1]-5],[frontMid[0],frontMid[1]-23],[frontMid[0],labelLane-23]],frontMid);
  if(r.optical.originOffset!==0){
