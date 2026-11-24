@@ -63,10 +63,18 @@ function drawSide(){
  if(!r){svg.innerHTML='';return;}
  const side=q=>[q[0],q[2]],topWorld=[0,r.zTop],bottomWorld=[0,r.zBottom];
  const world=[side(r.camera),side(r.front),side(r.laserFront),side(r.axisHit),topWorld,bottomWorld];
- const map=fitMap(world,W,H,[W<380?72:84,W<380?57:72,63,60]);
- const [C,F,L,O,top,bottom]=world.map(map);
- const blue='#007aff',red='#cf4552',green='#008b76',ink='#53667b',guide='#a2adba';
  const theta=r.theta*Math.PI/180,sn=Math.sin(theta),cs=Math.cos(theta);
+ // In X–Z the outward normal to the optical axis is (cos θ, -sin θ).
+ // The largest projection of the three cone vertices defines its outside edge.
+ const coneWorld=[world[0],topWorld,bottomWorld];
+ const edgeDistance=Math.max(...coneWorld.map(([x,z])=>x*cs-z*sn));
+ const railPoint=([x,z])=>[x+edgeDistance*cs,z-edgeDistance*sn];
+ const railFront=railPoint(world[1]),railZero=railPoint(world[3]);
+ const wdGap=Math.min(32,Math.max(24,W*.06));
+ const map=fitMap([...world,railFront,railZero],W,H,
+  [W<380?72:84,(W<380?41:54)+wdGap*cs,63,60+wdGap*sn]);
+ const [C,F,L,O,top,bottom]=world.map(map),cone=[C,top,bottom];
+ const blue='#007aff',red='#cf4552',green='#008b76',ink='#53667b',guide='#a2adba';
  const normal=[cs,sn],shift=(pt,v,k)=>[pt[0]+v[0]*k,pt[1]+v[1]*k];
  const group=(name,body)=>'<g data-line-dim="'+name+'">'+body+'</g>';
  const measure=(pt,qt)=>sectionDimension(pt,qt,ink);
@@ -82,8 +90,17 @@ function drawSide(){
   const tip=[L[0],L[1]+17];
   out+=ln([tip[0]-3,tip[1]-5],tip,red)+ln([tip[0]+3,tip[1]-5],tip,red);
  }
- const wdA=shift(F,normal,12),wdB=shift(O,normal,12),along=mid(wdA,wdB);
- out+=group('axial-wd',ln(F,wdA,guide)+ln(O,wdB,guide)+measure(wdA,wdB));
+ const wdA=shift(map(railFront),normal,wdGap),wdB=shift(map(railZero),normal,wdGap),along=mid(wdA,wdB);
+ // A witness line points back to the true endpoint, with its in-cone part omitted.
+ const axial=p=>(p[0]-O[0])*sn-(p[1]-O[1])*cs;
+ const across=p=>(p[0]-O[0])*cs+(p[1]-O[1])*sn;
+ const axisSection=cone.map(p=>[axial(p),across(p)]);
+ function wdWitness(origin,end){
+  const cut=FOV.sliceSegment(axisSection,axial(origin),0);
+  const start=Math.max(0,(cut?cut[1][1]:0)-across(origin))+3;
+  return ln(shift(origin,normal,start),end,guide,'3 3');
+ }
+ out+=group('axial-wd',wdWitness(F,wdA)+wdWitness(O,wdB)+measure(wdA,wdB));
  const baseA=[O[0],baseY],baseB=[C[0],baseY];
  out+=group('baseline',ln(bottom,baseA,guide,'2 4')+ln(C,baseB,guide,'2 4')+
   measure(baseA,baseB)+tx([Math.max(82,Math.min(W-82,(C[0]+O[0])/2)),H-10],
@@ -129,10 +146,18 @@ function drawSide(){
   for(const dy of [-16,20,-33,38,-52,55]){
    for(const dx of [-width/2-9,width/2+9,0])candidates.push([ax+dx,ay+dy]);
   }
+  const isWD=dimName==='axial-wd';
+  // The strip above the baseline also fits a horizontal reading on narrow plots.
+  if(isWD)candidates.push([ax,baseY-5],[W*.5,baseY-5]);
   let best;
   for(const [x,y] of candidates){
    const left=Math.max(5,Math.min(W-32-width,x-width/2)),base=Math.max(14,Math.min(baseY-4,y));
    const box=[left-2,base-13,left+width+2,base+4];
+   if(isWD){
+    const [x0,y0,x1,y1]=box,margin=10;
+    const keepClear=[[x0-margin,y0-margin],[x1+margin,y0-margin],[x1+margin,y1+margin],[x0-margin,y1+margin]];
+    if(FOV.intersect(cone,keepClear).length)continue;
+   }
    const overlap=boxes.reduce((sum,b)=>sum+Math.max(0,Math.min(box[2],b[2]+2)-Math.max(box[0],b[0]-2))*
      Math.max(0,Math.min(box[3],b[3]+2)-Math.max(box[1],b[1]-2)),0);
    if(!best||overlap<best.overlap)best={left,base,box,overlap};
@@ -149,7 +174,10 @@ function drawSide(){
  note('沙姆镜头光心',blue,[[C[0]+17,C[1]-12],[C[0]+18,labelLane-10],[C[0]+20,labelLane+5]],C);
  const arcMid=[C[0]-radius*Math.sin(theta/2),C[1]+radius*Math.cos(theta/2)];
  note('θ '+N(r.theta,1)+'°',blue,[[arcMid[0]-19,arcMid[1]+11],[C[0]+28,C[1]+30],[C[0]+4,labelLane-16]],arcMid,'tilt');
- note('沿轴 WD '+N(r.frontDistance)+' mm',ink,[[along[0]+46,along[1]+11],[along[0]+37,along[1]+28],[along[0]-16,along[1]+34]],along,'axial-wd');
+ const wdText='沿轴 WD '+N(r.frontDistance)+' mm';
+ const wdLabelOffset=ctx.measureText(wdText).width*cs/2+9*sn+6;
+ const wdCaption=shift(along,normal,wdLabelOffset);
+ note(wdText,ink,[[wdCaption[0],wdCaption[1]+3],[along[0]+48,along[1]+20],[along[0],along[1]+22]],along,'axial-wd');
  const frontMid=mid(L,F);
  note('前端同高',ink,[[frontMid[0],frontMid[1]-5],[frontMid[0],frontMid[1]-23],[frontMid[0],labelLane-23]],frontMid);
  if(r.optical.originOffset!==0){
