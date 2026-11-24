@@ -128,6 +128,13 @@ console.log('== 线激光 ==');
  throws(()=>G.load({version:9,product:'lineLaser'}),'拒绝旧版本线激光方案');
  const saved=G.solve(s)&&G.load(JSON.parse(JSON.stringify(s)));
  near(saved.baseline,r.baseline,1e-9,'方案保存/载入基线一致');
+ const oldScheme=clone(s);
+ oldScheme.baseline=9876;oldScheme.camera.wd=400;oldScheme.theta=30;oldScheme.camera.originOffset=10;
+ const loaded=G.load(oldScheme);
+ near(loaded.baseline,205,1e-9,'旧方案按 WD、倾角和后移重算光心基线');
+ near(loaded.camera.wd,400,1e-9,'旧基线不改变输入的镜头前端 WD');
+ near(G.mountDimensions(mg).baseline,200,1e-9,'参考倍率模式的基线忽略旧后移量');
+ ok(Number.isNaN(G.mountDimensions({...s,theta:0}).baseline),'无效倾角不显示基线');
 }
 
 console.log('== 相机景深 ==');

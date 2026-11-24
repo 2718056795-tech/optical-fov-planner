@@ -9,7 +9,7 @@ document.addEventListener('pointerdown',()=>{delete selector.dataset.keyboardFoc
 const action=document.createElement('div');action.className='line-actions actions';action.hidden=true;action.innerHTML='<button id="lineUndo" disabled title="Ctrl+Z">撤销</button><button id="lineRedo" disabled title="Ctrl+Y">重做</button><button id="lineReset">恢复示例</button><button id="lineSave" class="primary">保存方案</button><label class="filelabel">载入方案<input id="lineLoad" type="file" accept=".json" hidden></label><button id="lineCSV">导出结果 CSV</button><select id="lineFormat" aria-label="线激光导出图片格式"><option value="bmp">BMP 图片</option><option value="svg">SVG 矢量图</option></select><button id="lineExportAll">导出两张图</button>';document.querySelector('header .actions').append(action);
 const input=(path,label,step='.1',extra='')=>'<label>'+label+'<input data-line="'+path+'" type="number" step="'+step+'" '+extra+'></label>';
 const main=document.createElement('main');main.id='lineMain';main.className='line-main';main.hidden=true;main.innerHTML=`<aside class="parameter-grid line-parameters">
-<section class="panel"><div class="phead"><h2>线激光安装关系</h2><span class="small">激光竖直 · 光轴交点为零高</span></div><div class="body"><div class="fields">${input('baseline','X 光心基线 (mm)')}${input('theta','相机倾角 θ (°)','.1','min="0.000001" max="90"')}${input('camera.wd','镜头前端 WD · 沿轴 (mm)')}${input('normalH','光心垂直高度 (mm)','.1','readonly')}</div><p class="small line-link-note">θ 从竖直方向量起。修改 WD 或倾角会更新基线；修改基线会更新 WD。</p></div></section>
+<section class="panel"><div class="phead"><h2>线激光安装关系</h2><span class="small">激光竖直 · 光轴交点为零高</span></div><div class="body"><div class="fields">${input('camera.wd','镜头前端 WD · 沿轴 (mm)')}${input('theta','相机倾角 θ (°)','.1','min="0.000001" max="90"')}${input('baseline','X 光心基线 B (mm)','.1','readonly')}${input('normalH','光心垂直高度 (mm)','.1','readonly')}</div><p id="lineMountFormula" class="small line-link-note"></p></div></section>
 <section class="panel"><div class="phead"><h2>沙姆镜头 · 等效视野</h2><span class="small">几何选型</span></div><div class="body"><div class="fields"><label class="wide">镜头成像模型<select data-line="camera.model"><option value="pinhole">针孔近似 · 焦距 / 距离</option><option value="thin">薄透镜 · 有限共轭</option><option value="magnification">已知参考倍率（正视）</option></select></label>${input('camera.f','镜头名义焦距 (mm)').replace('<label>','<label id="lineFocalField">')}${input('camera.originOffset','光心后移量 (mm)').replace('<label>','<label id="lineOffsetField">')}${input('camera.mag','参考正视倍率 |m|','0.0001').replace('<label>','<label id="lineMagField" hidden>')}${input('camera.magWD','倍率参考 WD · 沿轴 (mm)').replace('<label>','<label id="lineMagWDField" hidden>')}</div><p id="lineModelInfo" class="small line-link-note"></p></div></section>
 <section class="panel"><div class="phead"><h2>Sensor 与 ROI</h2><button id="lineFullROI">全幅开窗</button></div><div class="body"><div class="fields">${input('camera.pixelPitch','像元大小 (μm)','.01')}${input('roi.nx','Sensor X 像素数','1')}${input('roi.ny','Sensor Y 像素数','1')}${input('camera.w','Sensor X 尺寸 (mm)','.001')}${input('camera.h','Sensor Y 尺寸 (mm)','.001')}${input('heightROI','<span id="lineROILabel">测高 ROI · Sensor Y (px)</span>','1','min="1"')}<label class="wide">梯形测高对应 Sensor<select data-line="heightAxis"><option value="short">短边（默认）</option><option value="long">长边</option></select></label></div><p id="lineSensorInfo" class="small line-link-note"></p><p id="lineOrientationInfo" class="small"></p></div></section>
 </aside><div class="content line-content"><div id="lineStatus" class="status">线激光：垂直激光光平面 + 斜视镜头，独立于面阵结构光。</div><div id="lineError" class="error" role="alert" hidden></div><div class="laser-plots">
@@ -26,9 +26,18 @@ function normalizeROI(before=null,path=''){
  if(before&&path==='roi.'+fullKey&&heightROIOf(before)===heightPixelsOf(before))r[roiKey]=r[fullKey];
  r[axis==='X'?'rh':'rw']=r[axis==='X'?'ny':'nx'];
 }
-const esc=s=>escapeText(String(s)),N=(v,n=2)=>fmt(v,n),getValue=p=>p==='baseline'?G.baseline(ls):p==='normalH'?(ls.camera.wd+G.originOffset(ls))*Math.cos(ls.theta*Math.PI/180):p==='heightROI'?heightROIOf(ls):p.split('.').reduce((v,k)=>v[k],ls);
+const esc=s=>escapeText(String(s)),N=(v,n=2)=>fmt(v,n),getValue=(p,mount)=>p==='baseline'?mount.baseline:p==='normalH'?mount.normalHeight:p==='heightROI'?heightROIOf(ls):p.split('.').reduce((v,k)=>v[k],ls);
 function put(p,v){if(p==='heightROI'){ls.roi[heightAxisOf(ls)==='X'?'rw':'rh']=v;return;}const a=p.split('.'),k=a.pop();let obj=ls;for(const s of a)obj=obj[s];obj[k]=v;}
-function syncInputs(force=false){for(const e of main.querySelectorAll('[data-line]'))if(force||e!==document.activeElement){const v=getValue(e.dataset.line);if(typeof v==='string')e.value=v;else e.value=Number.isFinite(v)?e.readOnly?Number(v.toFixed(2)):Number(v.toPrecision(9)):'';}}
+function syncInputs(force=false){
+ const mount=lr||G.mountDimensions(ls);
+ ls.baseline=Number.isFinite(mount.baseline)?mount.baseline:null;
+ for(const e of main.querySelectorAll('[data-line]')){
+  if(!force&&!e.readOnly&&e===document.activeElement)continue;
+  const v=getValue(e.dataset.line,mount);
+  if(typeof v==='string')e.value=v;
+  else e.value=Number.isFinite(v)?e.readOnly?Number(v.toFixed(2)):Number(v.toPrecision(9)):'';
+ }
+}
 function linkSensor(path,before){const c=ls.camera,r=ls.roi;if(path==='roi.nx'){if(before.roi.rw===before.roi.nx)r.rw=r.nx;else r.rw=Math.min(r.rw,r.nx);}if(path==='roi.ny'){if(before.roi.rh===before.roi.ny)r.rh=r.ny;else r.rh=Math.min(r.rh,r.ny);}if(path==='camera.w')c.pixelPitch=c.w*1000/r.nx;if(path==='camera.h')c.pixelPitch=c.h*1000/r.ny;c.w=r.nx*c.pixelPitch/1000;c.h=r.ny*c.pixelPitch/1000;}
 function buttons(){el('lineUndo').disabled=index<=0&&!!lr;el('lineRedo').disabled=!lr||index>=history.length-1;for(const e of [el('lineSave'),el('lineCSV'),el('lineExportAll'),...main.querySelectorAll('[data-line-export]')])e.disabled=!lr;}
 function record(){if(replay||!lr)return;const next=JSON.stringify(ls);if(next===JSON.stringify(history[index]))return;const active=document.activeElement?.dataset.line;history.splice(index+1);if(active&&group===active&&index>0)history[index]=cp(ls);else{history.push(cp(ls));index++;if(history.length>101){history.shift();index--;}}group=active||null;}
@@ -40,6 +49,7 @@ function illuminationWarning(r){
 }
 function updateLine(saveHistory=true){
  normalizeROI();const roiInput=main.querySelector('[data-line="heightROI"]');roiInput.max=heightPixelsOf(ls);el('lineROILabel').textContent='测高 ROI · Sensor '+heightAxisOf(ls)+' (px)';
+ el('lineMountFormula').textContent='θ 从竖直方向量起。基线 B = '+(G.originOffset(ls)===0?'WD':'(WD + 光心后移量)')+' × sin θ';
  const reference=ls.camera.model==='magnification';el('lineFocalField').hidden=el('lineOffsetField').hidden=reference;el('lineMagField').hidden=el('lineMagWDField').hidden=!reference;el('lineModelInfo').textContent=reference?'输入普通正视倍率建立视锥，测高方向另计倾斜投影；不使用名义焦距和光心后移，离开参考 WD 按中心投影估算。':ls.camera.model==='thin'?'薄透镜物距按前端 WD 加光心后移估算，需大于焦距；光心后移正值在后方。':'针孔近似按焦距与视距估算；光心后移以镜头前端为基准，正值在后方。';
  try{lr=G.solve(ls);ls.baseline=lr.baseline;el('lineError').hidden=true;el('lineStatus').classList.toggle('bad',!lr.laserReachesTop);el('lineStatus').textContent=lr.laserReachesTop?'线激光 · 激光器与镜头前端同高；光轴交点为零高，当前视野为'+(lr.rectangle?'矩形':'梯形')+'。':illuminationWarning(lr);
  el('lineDimensions').innerHTML='<div class="line-dimension-grid">'+valueCell('上底',lr.upperBase)+valueCell('下底',lr.lowerBase)+valueCell('总高',lr.height)+valueCell('上高 · 光轴至上底',lr.upperHeight)+valueCell('下高 · 光轴至下底',lr.lowerHeight)+valueCell('光轴处横向视野',lr.axisWidth)+'</div><p class="small">尺寸在激光光平面 Y–Z 内测量；上底对应较高位置。</p>';
@@ -243,7 +253,7 @@ function drawTrap(){
  out+=tx([14,20],'Y：沿线 · Z：高度','#8e8e93',10,'start');a.s.innerHTML=out;
 }
 function drawLine(){if(product!=='lineLaser')return;drawSide();drawTrap();}
-main.querySelectorAll('[data-line]').forEach(e=>{if(e.readOnly)return;e.addEventListener('input',()=>{const path=e.dataset.line,v=e.tagName==='SELECT'?e.value:e.value===''?NaN:Number(e.value),before=cp(ls);if(path==='baseline'){try{ls.camera.wd=G.distanceFromBaseline(ls,v);}catch(e){ls.camera.wd=NaN;}}else put(path,v);if(['camera.pixelPitch','camera.w','camera.h','roi.nx','roi.ny'].includes(path))linkSensor(path,before);normalizeROI(before,path);updateLine();});});
+main.querySelectorAll('[data-line]').forEach(e=>{if(e.readOnly)return;e.addEventListener('input',()=>{const path=e.dataset.line,v=e.tagName==='SELECT'?e.value:e.value===''?NaN:Number(e.value),before=cp(ls);put(path,v);if(['camera.pixelPitch','camera.w','camera.h','roi.nx','roi.ny'].includes(path))linkSensor(path,before);normalizeROI(before,path);updateLine();});});
 main.addEventListener('focusout',()=>group=null);
 function restore(n){replay=true;ls=cp(n);group=null;updateLine(false);syncInputs(true);replay=false;}
 el('lineUndo').onclick=()=>{if(!lr)restore(history[index]);else if(index>0)restore(history[--index]);buttons();toast('已撤销线激光参数修改');};el('lineRedo').onclick=()=>{if(index<history.length-1)restore(history[++index]);buttons();toast('已重做线激光参数修改');};
