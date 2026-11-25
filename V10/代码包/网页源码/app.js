@@ -18,7 +18,7 @@ function defaultLayoutView(){az=isStereo()?-.5:-.65;el=isStereo()?.7:.58;}
 function regionTitle(r){return r.label||'相机未覆盖';}
 function setupSnapshot(){return Object.fromEntries(FOV.setupKeys.map(k=>[k,clone(state[k])]));}
 function updateSceneUI(){const yes=isStereo();document.body.classList.toggle('stereo-mode',yes);document.querySelectorAll('.stereo-only').forEach(e=>e.hidden=!yes);$('monoBaselineField').hidden=yes;$('monoZField').hidden=yes;$('sceneMode').value=state.scene;$('cameraTitle').textContent=yes?'左相机':'2D 相机';$('cameraLegend').textContent=yes?'左相机 ROI':'相机 ROI';$('cameraOutputTitle').textContent=yes?'左相机视野':'2D 相机视野';$('distanceHint').textContent=yes?'名义工作平面为 Z=0，WD 沿左相机光轴从镜头前端量起。':'名义工作平面为 Z=0，WD 沿相机光轴从镜头前端量起。';}
-function switchScene(mode){if(!['mono','stereo'].includes(mode)||mode===state.scene)return;if(result)state.setups[state.scene]=setupSnapshot();Object.assign(state,clone(state.setups[mode]));state.scene=mode;defaultLayoutView();sync();update('view');toast(mode==='stereo'?'已切换双目：光机居中，左右各一台相机':'已切换单目');}
+function switchScene(mode){if(!['mono','stereo'].includes(mode)||mode===state.scene)return;if(result)state.setups[state.scene]=setupSnapshot();Object.assign(state,clone(state.setups[mode]));state.scene=mode;defaultLayoutView();sync();update('view');toast('');}
 
 const escapeText=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const field=(p,name,step='.1')=>`<label>${name}<input data-path="${p}" type="number" step="${step}"></label>`;
@@ -36,10 +36,24 @@ ${field('camera.w','Sensor 长 / X (mm)','.001')}${field('camera.h','Sensor 宽 
 
 </div>
 <details class="param-help"><summary>相机模型说明</summary><p id="cameraModelInfo" class="small"></p></details><details><summary>其他姿态与幅面偏心<span class="pose-summary" id="cameraPoseSummary"></span></summary><div class="fields">${field('camera.pitch','Y 方向俯仰 (°)')}${field('camera.ox','幅面中心偏心 X (mm)','.01')}${field('camera.oy','幅面中心偏心 Y (mm)','.01')}</div></details>`;
-$('projectorFields').innerHTML=`<div class="fields">${field('projector.tr','投射比 TR = 距离 / 宽','0.001')}${field('projector.f','投影等效焦距 (mm)','.001')}
-
-${field('projector.w','DMD 有效宽 (mm)','.001')}${field('projector.h','DMD 有效高 (mm)','.001')}${field('projector.nx','投影横向像素数 / X (px)','1')}${field('projector.ny','投影纵向像素数 / Y (px)','1')}<label>参考垂直距离 (mm)<input id="projectorNormalWD" type="number" readonly title="光机光心到参考平面的垂直距离，自动联动"></label><label>参考沿光轴距离 (mm)<input id="projectorAxisWD" type="number" readonly title="沿光机光轴到参考平面的距离，包含倾斜影响，自动联动"></label>${field('projector.yaw','X–Z 倾角 (°)')}
-</div><details class="param-help"><summary>TR 与投影说明</summary><p class="small" id="projectorInfo"></p></details><details><summary>更多姿态与投影偏心<span class="pose-summary" id="projectorPoseSummary"></span></summary><div class="fields">${field('projector.pitch','Y 方向俯仰 (°)')}${field('projector.ox','幅面中心偏心 X (mm)','.01')}${field('projector.oy','幅面中心偏心 Y (mm)','.01')}</div></details>`;
+function distanceReading(id,label){
+ return `<div class="distance-reading"><span id="${id}Label">${label}</span><output id="${id}" aria-labelledby="${id}Label ${id}Unit" aria-live="off"><b>—</b><small id="${id}Unit" hidden> mm</small></output></div>`;
+}
+function showDistanceReading(id,value){
+ const output=$(id),valid=Number.isFinite(value)&&value>=0;
+ output.firstElementChild.textContent=valid?fmt(value):'—';
+ output.lastElementChild.hidden=!valid;
+}
+function projectorField(key,label,unit,step){
+ return `<label><span>${label}</span><input type="number" data-path="projector.${key}" step="${step}"><small>${unit}</small></label>`;
+}
+$('projectorFields').innerHTML=`<div class="projector-field-list">
+${projectorField('tr','投射比 TR','','.001')}${projectorField('f','投影等效焦距','mm','.001')}
+${projectorField('w','DMD 有效宽','mm','.001')}${projectorField('h','DMD 有效高','mm','.001')}
+${projectorField('nx','横向像素 / X','px','1')}${projectorField('ny','纵向像素 / Y','px','1')}
+${projectorField('yaw','X–Z 倾角','°','.1')}
+</div><div class="mount-readings" role="group" aria-labelledby="projectorReferenceTitle"><h3 id="projectorReferenceTitle">参考工作距离</h3>
+${distanceReading('projectorNormalWD','垂直距离')}${distanceReading('projectorAxisWD','沿轴距离')}</div><details class="param-help"><summary>TR 与投影说明</summary><p class="small" id="projectorInfo"></p></details><details><summary>更多姿态与投影偏心<span class="pose-summary" id="projectorPoseSummary"></span></summary><div class="fields">${field('projector.pitch','Y 方向俯仰 (°)')}${field('projector.ox','幅面中心偏心 X (mm)','.01')}${field('projector.oy','幅面中心偏心 Y (mm)','.01')}</div></details>`;
 function linkProjector(changed){const d=state.projector;if(changed==='projector.tr')d.f=d.tr*d.w;else d.tr=d.f/d.w;d.link='f';for(const k of ['f','tr','link']){const e=document.querySelector('[data-path="projector.'+k+'"]');if(e&&e!==document.activeElement)e.value=Number.isFinite(d[k])||typeof d[k]==='string'?displayNumber(d[k],'projector.'+k):'';}}
 
 function sensorParts(side=1){const right=side===2;return {c:right?state.camera2:state.camera,r:right?state.roi2:state.roi,cp:right?'camera2':'camera',rp:right?'roi2':'roi',suffix:right?'2':''};}
@@ -70,7 +84,7 @@ function modelControls(){for(const [c,suffix] of [[state.camera,''],[state.camer
 $('roiFields').innerHTML=[['rw','开窗宽 / X (px)'],['rh','开窗高 / Y (px)']].map(([k,n])=>field('roi.'+k,n,'1')).join('');
 $('cameraFields2').innerHTML=$('cameraFields').innerHTML.replaceAll('data-path="camera.','data-path="camera2.').replaceAll('data-path="roi.','data-path="roi2.').replace(/id="([^"]+)"/g,(_,id)=>'id="'+id+'2"');
 const referenceWDInput=document.querySelector('[data-path="camera.wd"]');
-const rightWDInput=document.querySelector('[data-path="camera2.wd"]');rightWDInput.readOnly=true;rightWDInput.title='根据安装高度差与右相机倾角自动计算参考距离';
+document.querySelector('[data-path="camera2.wd"]').closest('label').outerHTML=distanceReading('rightCameraWD','前端参考 WD');
 function applyMountDistances(s){
  let z;
  if(s.scene==='stereo'){
@@ -81,7 +95,15 @@ function applyMountDistances(s){
  s.projector.wd=s.wdMode==='axis'?axis:z;
  return {normal:z,axis};
 }
-function syncMountWD(){const wd=applyMountDistances(state);if(isStereo())rightWDInput.value=displayNumber(state.camera2.wd);$('projectorNormalWD').value=displayNumber(wd.normal);$('projectorAxisWD').value=displayNumber(wd.axis);}
+function syncMountWD(){
+ const wd=applyMountDistances(state);
+ if(isStereo()){
+  $('rightCameraWDLabel').textContent='前端参考 WD · '+(state.wdMode==='axis'?'沿轴':'垂直');
+  showDistanceReading('rightCameraWD',state.camera2.wd);
+ }
+ showDistanceReading('projectorNormalWD',wd.normal);
+ showDistanceReading('projectorAxisWD',wd.axis);
+}
 
 function syncNominalWD(force=false){const e=$('otherWD'),d=FOV.nominalDistance(state);if(force||e!==document.activeElement)e.value=Number.isFinite(d)?displayNumber(d):'';}
 function coveragePercent(ratio, digits, covered){
@@ -114,7 +136,9 @@ function compareCameraCoverage(plane,digits=2){
   const corners=clearanceOrder.filter(([i])=>Math.abs(clearance.corners[i].signedDistance-minimum)<=clearance.tolerance);
   if(corners.length)locations.push((eye?eye+'相机 ':'')+(corners.length===4?'四角':corners.map(([,label])=>label).join('、')));
  }
- return {minimum,locations,coverage:eyes.map(([clearance,eye,ratio])=>(eye?eye+' ':'')+coveragePercent(ratio,digits,clearance.covered)).join(' / ')};
+ const perEye=eyes.map(([clearance,,ratio])=>coveragePercent(ratio,digits,clearance.covered));
+ const coverage=eyes.map(([,eye],i)=>(eye?eye+' ':'')+perEye[i]).join(' / ');
+ return {minimum,locations,perEye,coverage};
 }
 // Only a solved endpoint enters the saved scheme. An unfinished edit keeps
 // the last accepted WD as the distance used for drawing and comparison.
@@ -146,15 +170,16 @@ function syncWorkPlanes(errors={}){
  $('depthError').hidden=!Object.keys(errors).length;
  const summary=new Map(workPlanes.map(plane=>[plane.key,{plane,...compareCameraCoverage(plane)}]));
  const worst=Math.min(...Array.from(summary.values(),item=>item.minimum));
- $('depthCoverageHeading').textContent=isStereo()?'投影覆盖左 / 右 ROI':'投影覆盖 ROI';
+ $('depthCoverageHeading').textContent=isStereo()?'左 ROI 覆盖率':'投影覆盖 ROI';
  for(const row of $('depthTabs').tBodies[0].rows){
   const button=row.querySelector('[data-depth]'),key=button.dataset.depth,item=summary.get(key);
   const active=currentPlane?.key===key;
   const enteredWD=key==='middle'?FOV.nominalDistance(state):state.depthRange[key];
   const wd=enteredWD===''?NaN:Number(enteredWD);
-  row.cells[1].textContent=fmt(wd);
-  row.cells[2].textContent=item?item.coverage:'—';
-  const margin=row.cells[3],corners=row.cells[4];
+  row.querySelector('[data-wd]').textContent=fmt(wd);
+  row.querySelector('[data-coverage="left"]').textContent=item?.perEye[0]??'—';
+  row.querySelector('[data-coverage="right"]').textContent=item?.perEye[1]??'—';
+  const margin=row.querySelector('[data-margin]'),corners=row.querySelector('[data-corners]');
   margin.classList.toggle('depth-overflow',Boolean(item&&item.minimum<0));
   margin.textContent='—';
   if(item){
@@ -1036,7 +1061,7 @@ function appendDepthCSV(rows,params,cameraName){
 }
 
 $('csv').onclick=()=>{
- if(!result)return;const r=result,stereo=isStereo(),rows=[['3D 视觉视野规划 V10.6.4'],['系统模式',stereo?'双目':'单目'],['3D视野定义',stereo?'左 ROI ∩ 右 ROI ∩ 光机投影':'相机 ROI ∩ 光机投影'],['参数','值']];
+ if(!result)return;const r=result,stereo=isStereo(),rows=[['3D 视觉视野规划 V10.6.5'],['系统模式',stereo?'双目':'单目'],['3D视野定义',stereo?'左 ROI ∩ 右 ROI ∩ 光机投影':'相机 ROI ∩ 光机投影'],['参数','值']];
  function flatten(o,p=''){for(const [k,v] of Object.entries(o)){if(k==='setups')continue;const key=p?p+'.'+k:k;if(v&&typeof v==='object')flatten(v,key);else rows.push([key,v]);}}flatten(state);
  rows.push([],['工作截面对照','沿轴 WD (mm)',stereo?'投影覆盖左 / 右 ROI':'投影覆盖 ROI','最小有符号余量 (mm)','对应角点','状态']);
  for(const [key,label] of [['near','近端'],['middle','名义工作平面'],['far','远端']]){

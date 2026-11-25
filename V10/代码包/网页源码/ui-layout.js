@@ -80,10 +80,32 @@ toolbarSlot.className='header-toolbar-slot';
 headerRight.insertBefore(toolbarSlot,structuredActions);
 toolbarSlot.append(structuredActions,lineActions);
 
-function arrangeActions(actions, {load,save,format,exportImage,more}){
+function toolbarGroup(label){
+ const group=document.createElement('div');
+ group.className='toolbar-pair';
+ group.setAttribute('role','group');
+ group.setAttribute('aria-label',label);
+ return group;
+}
+function arrangeActions(actions, {load,save,undo,redo,format,exportImage,more}){
+ const undoButton=document.getElementById(undo),redoButton=document.getElementById(redo);
+ const history=toolbarGroup('编辑历史');
+ const previousGroup=undoButton.closest('.v10-history');
+ (previousGroup||undoButton).before(history);
+ history.classList.add('toolbar-history');
+ history.append(undoButton,redoButton);
+ if(previousGroup)previousGroup.remove();
+ for(const [button,label,shortcut] of [[undoButton,'撤销','Ctrl+Z'],[redoButton,'重做','Ctrl+Y']]){
+  button.setAttribute('aria-label',label);
+  button.title=label+' · '+shortcut;
+  button.innerHTML='<svg aria-hidden="true" focusable="false" width="17" height="17" viewBox="0 0 20 20"><path d="M7.6 4 3.5 8.1l4.1 4.1M4.1 8.1h7c3.3 0 5.2 1.7 5.2 4.6 0 1.3-.5 2.5-1.4 3.4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+ }
+ redoButton.classList.add('toolbar-redo');
  const loadLabel=document.getElementById(load).closest('label');
  const saveButton=document.getElementById(save);
- saveButton.before(loadLabel);
+ const files=toolbarGroup('方案文件');
+ saveButton.before(files);
+ files.append(loadLabel,saveButton);
  loadLabel.tabIndex=0;
  loadLabel.setAttribute('role','button');
  loadLabel.addEventListener('keydown',event=>{
@@ -111,11 +133,19 @@ function arrangeActions(actions, {load,save,format,exportImage,more}){
   menu.open=false;
   trigger.focus();
  });
+ menu.addEventListener('focusout',event=>{
+  if(event.relatedTarget&&!menu.contains(event.relatedTarget))menu.open=false;
+ });
+ const fitMenu=()=>{
+  if(menu.open)menu.classList.toggle('align-start',trigger.getBoundingClientRect().right-items.offsetWidth<8);
+ };
+ menu.addEventListener('toggle',fitMenu);
+ window.addEventListener('resize',fitMenu);
  return menu;
 }
 const moreMenus=[
- arrangeActions(structuredActions,{load:'load',save:'save',format:'imageFormat',exportImage:'svgExport',more:['reset','csv','print']}),
- arrangeActions(lineActions,{load:'lineLoad',save:'lineSave',format:'lineFormat',exportImage:'lineExportAll',more:['lineReset','lineCSV']})
+ arrangeActions(structuredActions,{load:'load',save:'save',format:'imageFormat',exportImage:'svgExport',undo:'undoParameters',redo:'redoParameters',more:['reset','csv','print']}),
+ arrangeActions(lineActions,{load:'lineLoad',save:'lineSave',format:'lineFormat',exportImage:'lineExportAll',undo:'lineUndo',redo:'lineRedo',more:['lineReset','lineCSV']})
 ];
 document.addEventListener('click',event=>{
  for(const menu of moreMenus)if(!menu.contains(event.target))menu.open=false;
@@ -165,4 +195,71 @@ function sizeToolbars(){const width=toolbarSlot.getBoundingClientRect().width;if
 sizeToolbars();new ResizeObserver(()=>{if(Math.abs(toolbarSlot.getBoundingClientRect().width-toolbarWidth)>.25)sizeToolbars();}).observe(toolbarSlot);
 if(document.fonts?.ready)document.fonts.ready.then(sizeToolbars);
 requestAnimationFrame(()=>{drawFootprint();drawLayout();});
+})();
+// Each product keeps its own inspector section while the user switches views.
+(function(){
+ const shortNumber=(value,field='')=>Number.isFinite(value)?displayNumber(value,field):'—';
+ function lensSummary(camera){
+  if(camera.model==='magnification')return '倍率 '+shortNumber(camera.mag,'camera.mag')+'×';
+  return (camera.model==='thin'?'薄透镜':'针孔')+' '+shortNumber(camera.f)+' mm';
+ }
+ function attachInspector(groups,readState,updateSignal){
+  const entries=groups.map(([anchor,summary])=>{
+   const panel=anchor.closest('section.panel'),head=panel.querySelector(':scope > .phead');
+   const heading=head.querySelector('h2'),body=panel.querySelector(':scope > .body');
+   const title=document.createElement('span');
+   title.textContent=heading.textContent;
+   if(heading.id){title.id=heading.id;heading.removeAttribute('id');}
+   const stem='inspector-'+anchor.id;
+   title.id=title.id||stem+'-name';
+   body.id=body.id||stem+'-fields';
+   const button=document.createElement('button');
+   button.type='button';button.className='inspector-toggle';
+   button.setAttribute('aria-controls',body.id);button.setAttribute('aria-labelledby',title.id);
+   const value=document.createElement('span');
+   value.className='inspector-summary';value.id=stem+'-summary';
+   button.append(title,value);heading.replaceChildren(button);panel.classList.add('inspector-group');
+   return {panel,button,body,title,value,summary,help:head.querySelector('.parameter-help-trigger')};
+  });
+  function showGroup(selected){
+   for(const entry of entries){
+    const open=entry===selected;
+    entry.panel.classList.toggle('inspector-closed',!open);
+    entry.body.hidden=!open;
+    entry.value.hidden=open;
+    entry.button.setAttribute('aria-expanded',String(open));
+    if(open)entry.button.removeAttribute('aria-describedby');
+    else entry.button.setAttribute('aria-describedby',entry.value.id);
+   }
+  }
+  function refresh(){
+   if(entries.some(entry=>entry.panel.hidden&&!entry.body.hidden))showGroup(entries[0]);
+   const s=readState();
+   for(const entry of entries){
+    const summary=entry.summary(s);
+    if(entry.value.textContent!==summary){entry.value.textContent=summary;entry.value.title=summary;}
+    if(entry.help)entry.help.setAttribute('aria-label','查看'+entry.title.textContent+'说明');
+   }
+  }
+  for(const entry of entries)entry.button.addEventListener('click',()=>{
+   showGroup(entry.body.hidden?entry:null);
+   entry.button.scrollIntoView({block:'nearest',inline:'nearest'});
+  });
+  showGroup(entries[0]);refresh();
+  // These labels are refreshed on edit, undo, reset, file load and scene changes.
+  new MutationObserver(refresh).observe(updateSignal(),{childList:true});
+ }
+ const group=id=>document.getElementById(id);
+ const cameraSummary=d=>lensSummary(d)+' · '+shortNumber(d.yaw)+'°';
+ attachInspector([
+  [group('sceneMode'),s=>(s.scene==='stereo'?'双目':'单目')+' · 名义 WD '+shortNumber(FOV.nominalDistance(s))+' mm'],
+  [group('cameraFields'),s=>cameraSummary(s.camera)],
+  [group('cameraFields2'),s=>cameraSummary(s.camera2)],
+  [group('projectorFields'),s=>'TR '+shortNumber(s.projector.tr,'projector.tr')+' · '+shortNumber(s.projector.yaw)+'°']
+ ],()=>state,()=>group('cameraTitle'));
+ attachInspector([
+  [group('lineMountFormula'),s=>'WD '+shortNumber(s.camera.wd)+' mm · '+shortNumber(s.theta)+'°'],
+  [group('lineModelInfo'),s=>lensSummary(s.camera)],
+  [group('lineSensorInfo'),()=>group('lineROILabel').textContent.replace(' (px)','')+' · '+(document.querySelector('[data-line="heightROI"]').value||'—')+' px']
+ ],()=>window.LineLaserApp.getState(),()=>group('lineStatus'));
 })();

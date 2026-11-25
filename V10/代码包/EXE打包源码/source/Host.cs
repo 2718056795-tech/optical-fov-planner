@@ -15,7 +15,7 @@ using Microsoft.Web.WebView2.WinForms;
 [assembly: AssemblyTitle("3D视野规划工具")]
 [assembly: AssemblyDescription("保留原页面与绘图的离线单文件桌面版")]
 [assembly: AssemblyVersion("10.0.0.0")]
-[assembly: AssemblyFileVersion("10.6.4.0")]
+[assembly: AssemblyFileVersion("10.6.5.0")]
 
 internal static class Program
 {

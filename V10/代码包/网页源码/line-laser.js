@@ -9,7 +9,7 @@ document.addEventListener('pointerdown',()=>{delete selector.dataset.keyboardFoc
 const action=document.createElement('div');action.className='line-actions actions';action.hidden=true;action.innerHTML='<button id="lineUndo" disabled title="Ctrl+Z">撤销</button><button id="lineRedo" disabled title="Ctrl+Y">重做</button><button id="lineReset">恢复示例</button><button id="lineSave" class="primary">保存方案</button><label class="filelabel">载入方案<input id="lineLoad" type="file" accept=".json" hidden></label><button id="lineCSV">导出结果 CSV</button><select id="lineFormat" aria-label="线激光导出图片格式"><option value="bmp">BMP 图片</option><option value="svg">SVG 矢量图</option></select><button id="lineExportAll">导出两张图</button>';document.querySelector('header .actions').append(action);
 const input=(path,label,step='.1',extra='')=>'<label>'+label+'<input data-line="'+path+'" type="number" step="'+step+'" '+extra+'></label>';
 const main=document.createElement('main');main.id='lineMain';main.className='line-main';main.hidden=true;main.innerHTML=`<aside class="parameter-grid line-parameters">
-<section class="panel"><div class="phead"><h2>线激光安装关系</h2><span class="small">激光竖直 · 光轴交点为零高</span></div><div class="body"><div class="fields">${input('camera.wd','镜头前端 WD · 沿轴 (mm)')}${input('theta','相机倾角 θ (°)','.1','min="0.000001" max="90"')}${input('baseline','X 光心基线 B (mm)','.1','readonly')}${input('normalH','光心垂直高度 (mm)','.1','readonly')}</div><p id="lineMountFormula" class="small line-link-note"></p></div></section>
+<section class="panel"><div class="phead"><h2>线激光安装关系</h2><span class="small">激光竖直 · 光轴交点为零高</span></div><div class="body"><div class="fields">${input('camera.wd','镜头前端 WD · 沿轴 (mm)')}${input('theta','相机倾角 θ (°)','.1','min="0.000001" max="90"')}</div><div class="mount-readings" role="group" aria-label="由工作距离和倾角计算的安装尺寸">${distanceReading('lineBaseline','X 光心基线 B')}${distanceReading('lineNormalHeight','光心垂直高度')}</div><p id="lineMountFormula" class="small line-link-note"></p></div></section>
 <section class="panel"><div class="phead"><h2>沙姆镜头 · 等效视野</h2><span class="small">几何选型</span></div><div class="body"><div class="fields"><label class="wide">镜头成像模型<select data-line="camera.model"><option value="pinhole">针孔近似 · 焦距 / 距离</option><option value="thin">薄透镜 · 有限共轭</option><option value="magnification">已知参考倍率（正视）</option></select></label>${input('camera.f','镜头名义焦距 (mm)').replace('<label>','<label id="lineFocalField">')}${input('camera.originOffset','光心后移量 (mm)').replace('<label>','<label id="lineOffsetField">')}${input('camera.mag','参考正视倍率 |m|','0.0001').replace('<label>','<label id="lineMagField" hidden>')}${input('camera.magWD','倍率参考 WD · 沿轴 (mm)').replace('<label>','<label id="lineMagWDField" hidden>')}</div><p id="lineModelInfo" class="small line-link-note"></p></div></section>
 <section class="panel"><div class="phead"><h2>Sensor 与 ROI</h2><button id="lineFullROI">全幅开窗</button></div><div class="body"><div class="fields">${input('camera.pixelPitch','像元大小 (μm)','.01')}${input('roi.nx','Sensor X 像素数','1')}${input('roi.ny','Sensor Y 像素数','1')}${input('camera.w','Sensor X 尺寸 (mm)','.001')}${input('camera.h','Sensor Y 尺寸 (mm)','.001')}${input('heightROI','<span id="lineROILabel">测高 ROI · Sensor Y (px)</span>','1','min="1"')}<label class="wide">梯形测高对应 Sensor<select data-line="heightAxis"><option value="short">短边（默认）</option><option value="long">长边</option></select></label></div><p id="lineSensorInfo" class="small line-link-note"></p><p id="lineOrientationInfo" class="small"></p></div></section>
 </aside><div class="content line-content"><div id="lineStatus" class="status">线激光：垂直激光光平面 + 斜视镜头，独立于面阵结构光。</div><div id="lineError" class="error" role="alert" hidden></div><div class="laser-plots">
@@ -43,16 +43,18 @@ function syncSensorSummary(){
  el('lineSensorInfo').textContent=valid?N(ls.camera.pixelPitch,4)+' μm × '+ls.roi.nx+' / '+ls.roi.ny+' px = '+N(ls.camera.w,4)+' × '+N(ls.camera.h,4)+' mm':'';
  el('lineOrientationInfo').textContent=valid?'当前测高：Sensor '+axis+'；沿线：Sensor '+(axis==='X'?'Y':'X')+'。ROI 沿测高方向自动居中，沿线方向保持全幅。':'';
 }
-const esc=s=>escapeText(String(s)),N=(v,n=2)=>fmt(v,n),getValue=(p,mount)=>p==='baseline'?mount.baseline:p==='normalH'?mount.normalHeight:p==='heightROI'?heightROIOf(ls):p.split('.').reduce((v,k)=>v[k],ls);
+const esc=s=>escapeText(String(s)),N=(v,n=2)=>fmt(v,n),getValue=p=>p==='heightROI'?heightROIOf(ls):p.split('.').reduce((v,k)=>v[k],ls);
 function put(p,v){if(p==='heightROI'){ls.roi[heightAxisOf(ls)==='X'?'rw':'rh']=v;return;}const a=p.split('.'),k=a.pop();let obj=ls;for(const s of a)obj=obj[s];obj[k]=v;}
 function syncInputs(force=false){
  const mount=lr||G.mountDimensions(ls);
  ls.baseline=Number.isFinite(mount.baseline)?mount.baseline:null;
+ showDistanceReading('lineBaseline',mount.baseline);
+ showDistanceReading('lineNormalHeight',mount.normalHeight);
  for(const e of main.querySelectorAll('[data-line]')){
-  if(!force&&!e.readOnly&&e===document.activeElement)continue;
-  const v=getValue(e.dataset.line,mount);
+  if(!force&&e===document.activeElement)continue;
+  const v=getValue(e.dataset.line);
   if(typeof v==='string')e.value=v;
-  else e.value=Number.isFinite(v)?e.readOnly?Number(v.toFixed(2)):Number(v.toPrecision(9)):'';
+  else e.value=Number.isFinite(v)?Number(v.toPrecision(9)):'';
  }
 }
 function linkSensor(path){const c=ls.camera,r=ls.roi;if(path==='camera.w')c.pixelPitch=c.w*1000/r.nx;if(path==='camera.h')c.pixelPitch=c.h*1000/r.ny;c.w=r.nx*c.pixelPitch/1000;c.h=r.ny*c.pixelPitch/1000;}
@@ -290,7 +292,6 @@ function drawTrap(){
 }
 function drawLine(){if(product!=='lineLaser')return;drawSide();drawTrap();}
 main.querySelectorAll('[data-line]').forEach(e=>{
- if(e.readOnly)return;
  e.addEventListener('input',()=>{
   const path=e.dataset.line,linked=linkedFields.has(path),adjustROI=linked||path==='heightAxis';
   // Short/long axes and the size limit may cross several times as a number is typed.
