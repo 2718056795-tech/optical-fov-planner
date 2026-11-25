@@ -43,6 +43,27 @@ function solve(s){
  const unreachableHeight=excess>1e-7?excess:0;
  return {optical,axisWidth,axisLeft,axisRight,points,worldPoints:points.map(p=>[0,p[0],p[1]]),camera:[B,0,H],front,laserFront:[0,0,front[2]],laserReachesTop:unreachableHeight===0,unreachableHeight,axis:[-sn,0,-cs],axisHit:[0,0,0],baseline:B,frontBaseline:front[0],axisDistance:U,frontDistance:c.wd,normalHeight:H,theta:s.theta,upperBase,lowerBase,height,upperHeight:Math.max(0,upper),lowerHeight:Math.max(0,lower),zTop,zBottom,roi:{...r,rx:Math.floor((r.nx-r.rw)/2),ry:Math.floor((r.ny-r.rh)/2)},rectangle:Math.abs(upperBase-lowerBase)<1e-7*Math.max(1,upperBase,lowerBase),sensor:{heightSensorAxis,lineSensorAxis,sensorHeight,sensorWidth,nHeight,nLine,roiHeight,roiLine,startHeight,startLine,heightMode:mode},sampling:{unit:'mm/pixel',samples}};
 }
-function load(raw){if(!raw||raw.product!=='lineLaser'||raw.version!==10)throw Error('请选择 V10 线激光方案；面阵结构光方案请在对应入口载入');const s=copy(defaults);for(const k of ['theta','heightAxis'])if(k in raw)s[k]=raw[k];for(const [key,template] of [['camera',s.camera],['roi',s.roi]]){if(!raw[key]||typeof raw[key]!=='object')throw Error('线激光方案参数不完整');for(const k of Object.keys(template))if(k in raw[key])template[k]=raw[key][k];}const q=solve(s);s.baseline=q.baseline;return s;}
+function load(raw){
+ if(!raw||raw.product!=='lineLaser'||raw.version!==10)throw Error('请选择 V10 线激光方案；面阵结构光方案请在对应入口载入');
+ const s=copy(defaults);
+ for(const k of ['theta','heightAxis'])if(k in raw)s[k]=raw[k];
+ for(const [key,template] of [['camera',s.camera],['roi',s.roi]]){
+  if(!raw[key]||typeof raw[key]!=='object')throw Error('线激光方案参数不完整');
+  for(const k of Object.keys(template))if(k in raw[key])template[k]=raw[key][k];
+ }
+ // Older files may omit a linked Sensor dimension. Validate explicit dimensions before using them.
+ const c=s.camera,r=s.roi,source=raw.camera;
+ if(!('pixelPitch' in source)){
+  if('w' in source)c.pixelPitch=c.w*1000/r.nx;
+  else if('h' in source)c.pixelPitch=c.h*1000/r.ny;
+ }
+ for(const [axis,size,count] of [['X','w','nx'],['Y','h','ny']]){
+  const expected=c.pixelPitch*r[count]/1000;
+  if(!(size in source))c[size]=expected;
+  else if(Math.abs(c[size]-expected)>Math.max(1e-9,Math.abs(expected)*1e-8)){
+   throw Error('Sensor '+axis+' 尺寸与像元大小 × '+axis+' 像素数不一致，请核对线激光方案');
+  }
+ }
+ const q=solve(s);s.baseline=q.baseline;return s;}
 const api={originOffset,defaults,solve,load,baseline,distanceFromBaseline,mountDimensions};if(typeof module!=='undefined'&&module.exports)module.exports=api;root.LaserFOV=api;
 })(typeof globalThis!=='undefined'?globalThis:this);

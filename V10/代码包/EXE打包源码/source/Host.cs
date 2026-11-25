@@ -15,7 +15,7 @@ using Microsoft.Web.WebView2.WinForms;
 [assembly: AssemblyTitle("3D视野规划工具")]
 [assembly: AssemblyDescription("保留原页面与绘图的离线单文件桌面版")]
 [assembly: AssemblyVersion("10.0.0.0")]
-[assembly: AssemblyFileVersion("10.0.0.0")]
+[assembly: AssemblyFileVersion("10.6.4.0")]
 
 internal static class Program
 {
@@ -244,6 +244,25 @@ internal sealed class ToolWindow : Form
             image.Save(Path.Combine(Program.VerifyRoot,"startup-loading.png"),System.Drawing.Imaging.ImageFormat.Png);
         }
     }
+    private void DownloadNotice(string message)
+    {
+        if(!IsDisposed && !Disposing && web.CoreWebView2!=null)
+            web.CoreWebView2.PostWebMessageAsString("fov-download:"+message);
+    }
+    private void TrackDownload(CoreWebView2DownloadOperation download,string file)
+    {
+        EventHandler<object> changed=null;
+        changed=delegate
+        {
+            if(download.State==CoreWebView2DownloadState.InProgress)return;
+            download.StateChanged-=changed;
+            if(download.State==CoreWebView2DownloadState.Completed)DownloadNotice("已保存 "+file);
+            else if(download.InterruptReason==CoreWebView2DownloadInterruptReason.UserCanceled)DownloadNotice("已取消保存 "+file);
+            else DownloadNotice("保存失败 "+file+"（"+download.InterruptReason+"）");
+        };
+        download.StateChanged+=changed;
+        changed(null,null);
+    }
     private void OnDownload(object sender,CoreWebView2DownloadStartingEventArgs e)
     {
         e.Handled=true;
@@ -251,7 +270,7 @@ internal sealed class ToolWindow : Form
         if(Program.VerifyRoot!=null)
         {
             string folder=Path.Combine(Program.VerifyRoot,"downloads");Directory.CreateDirectory(folder);
-            e.ResultFilePath=Path.Combine(folder,file);return;
+            e.ResultFilePath=Path.Combine(folder,file);TrackDownload(e.DownloadOperation,file);return;
         }
         var deferral=e.GetDeferral();
         BeginInvoke(new Action(delegate
@@ -264,11 +283,15 @@ internal sealed class ToolWindow : Form
                     dialog.Filter="导出文件 (*"+Path.GetExtension(file)+")|*"+Path.GetExtension(file)+"|所有文件 (*.*)|*.*";
                     dialog.OverwritePrompt=true;
                     dialog.RestoreDirectory=true;
-                    if(dialog.ShowDialog(this)==DialogResult.OK)e.ResultFilePath=dialog.FileName;
-                    else e.Cancel=true;
+                    if(dialog.ShowDialog(this)==DialogResult.OK)
+                    {
+                        e.ResultFilePath=dialog.FileName;
+                        TrackDownload(e.DownloadOperation,Path.GetFileName(dialog.FileName));
+                    }
+                    else {e.Cancel=true;DownloadNotice("已取消保存 "+file);}
                 }
             }
-            catch {e.Cancel=true;}
+            catch {e.Cancel=true;DownloadNotice("保存失败 "+file);}
             finally {deferral.Complete();}
         }));
     }

@@ -10,7 +10,7 @@ const measures=document.createElement('section');measures.id='overviewMeasures';
 const measureHead=document.createElement('div');measureHead.className='phead';measureHead.innerHTML='<h2>视野尺寸与投影余量</h2>';measureHead.append(content.querySelector('.legend'));const summaries=combined.querySelector('.combined-summaries');summaries.setAttribute('aria-live','polite');measures.append(measureHead,summaries);plots.after(comparison,overlap,measures);
 // Keep the complete dimension and clearance block when the field view is expanded.
 combined.querySelector('.plot-zoom').addEventListener('click',()=>{if(combined.closest('#plotDialog'))combined.append(comparison,measures);});
-document.getElementById('plotDialog').addEventListener('close',()=>{
+document.getElementById('plotDialog').addEventListener('plotpanelrestored',()=>{
  if(combined.contains(comparison))plots.after(comparison,overlap,measures);
 });
 // Explanatory notes remain available from one compact help button per panel.
@@ -36,7 +36,7 @@ for(const panel of [...plots.children,overlap]){
 }
 // Readable display values do not round the underlying parameter or export data.
 function inputValue(e){if(e.id==='otherWD')return FOV.nominalDistance(state);return get(state,e.dataset.path);}
-main.addEventListener('focusin',e=>{const n=e.target;if(!n.matches('input[type="number"]')||n.readOnly||n.dataset.path?.includes('.dof.')||(!n.dataset.path&&n.id!=='otherWD'))return;const v=inputValue(n);if(Number.isFinite(v))n.value=String(v);});
+main.addEventListener('focusin',e=>{const n=e.target;if(!n.matches('input[type="number"]')||n.readOnly||n.dataset.path?.includes('.dof.')||(!n.dataset.path&&n.id!=='otherWD'))return;const v=inputValue(n);if(Number.isFinite(v)&&n.value!==String(v)){n.value=String(v);n.select();}});
 main.addEventListener('focusout',e=>{const n=e.target;if(!n.matches('input[type="number"]')||n.readOnly||n.dataset.path?.includes('.dof.')||(!n.dataset.path&&n.id!=='otherWD'))return;n.value=displayNumber(inputValue(n),n.dataset.path||'');});
 // Match the full illustration cards across product lines; keep measurements below them.
 const laserMain=document.getElementById('lineMain'),laserPlots=laserMain.querySelector('.laser-plots'),laserMeasures=document.createElement('section');laserMeasures.id='lineOverviewMeasures';laserMeasures.className='panel line-overview-measures';laserMeasures.innerHTML='<div class="phead"><h2>安装与梯形视野尺寸</h2><span class="small">mm · °</span></div><div class="line-measure-columns"></div>';
@@ -46,7 +46,7 @@ for(const [id,title,caption] of [['lineLayoutInfo','安装关系','X–Z 侧视�
  const help=document.createElement('details');help.className='diagram-help';help.innerHTML='<summary>图示说明</summary><p class="caption"></p>';help.querySelector('p').textContent=caption;panel.append(help);
  panel.querySelector('[data-line-zoom]').addEventListener('click',()=>{if(panel.closest('#lineDialog')){laserMeasureSlot=document.createComment('line-measure-position');group.before(laserMeasureSlot);laserMeasureGroup=group;panel.append(group);}});
 }
-laserPlots.after(laserMeasures);document.getElementById('lineDialog').addEventListener('close',()=>{if(laserMeasureSlot){laserMeasureSlot.replaceWith(laserMeasureGroup);laserMeasureSlot=laserMeasureGroup=null;}});
+laserPlots.after(laserMeasures);document.getElementById('lineDialog').addEventListener('plotpanelrestored',()=>{if(laserMeasureSlot){laserMeasureSlot.replaceWith(laserMeasureGroup);laserMeasureSlot=laserMeasureGroup=null;}});
 // At phone widths the two work areas share a single scroll surface.
 for(const workspace of [main,laserMain]){
  const nav=document.createElement('nav');
