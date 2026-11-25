@@ -28,8 +28,17 @@ function solve(s){
  // Axis sampling is centred on the optical axis, independent of the pixel grid parity.
  const heightPixel=sensorHeight/nHeight,centre=nHeight/2;
  const intervals=[{label:'上底端',start:startHeight,end:startHeight+1,row:startHeight+1,axisCentered:false},{label:'光轴处',start:centre-.5,end:centre+.5,row:null,axisCentered:true},{label:'下底端',start:startHeight+roiHeight-1,end:startHeight+roiHeight,row:startHeight+roiHeight,axisCentered:false}];
- const samples=intervals.map(q=>{const upperSensor=q.axisCentered?heightPixel/2:sensorHeight*(.5-q.start/nHeight),lowerSensor=q.axisCentered?-heightPixel/2:sensorHeight*(.5-q.end/nHeight),upperEdge=trace(0,upperSensor),lowerEdge=trace(0,lowerSensor);return{label:q.label,row:q.row,axisCentered:q.axisCentered,pixelBounds:[q.start,q.end],sensorEdges:[upperSensor,lowerSensor],withinROI:q.start>=startHeight-1e-9&&q.end<=startHeight+roiHeight+1e-9,heightPitch:Math.abs(lowerEdge[1]-upperEdge[1]),heightEdges:[upperEdge,lowerEdge]};});
- const axisLeft=trace(x0,0),axisRight=trace(x1,0),axisWidth=axisRight[0]-axisLeft[0],upperBase=points[2][0]-points[3][0],lowerBase=points[1][0]-points[0][0],height=zTop-zBottom,front=[c.wd*sn,0,c.wd*cs];
+ const front=[c.wd*sn,0,c.wd*cs];
+ const samples=intervals.map(q=>{
+  const upperSensor=q.axisCentered?heightPixel/2:sensorHeight*(.5-q.start/nHeight);
+  const lowerSensor=q.axisCentered?-heightPixel/2:sensorHeight*(.5-q.end/nHeight);
+  const upperEdge=trace(0,upperSensor),lowerEdge=trace(0,lowerSensor);
+  // Compare the entire sampled interval with the laser's downward emission half-plane.
+  let illumination='within';
+  if(upperEdge[1]>front[2]+1e-7)illumination=lowerEdge[1]>=front[2]-1e-7?'outside':'partial';
+  return {label:q.label,row:q.row,axisCentered:q.axisCentered,pixelBounds:[q.start,q.end],sensorEdges:[upperSensor,lowerSensor],withinROI:q.start>=startHeight-1e-9&&q.end<=startHeight+roiHeight+1e-9,illumination,heightPitch:Math.abs(lowerEdge[1]-upperEdge[1]),heightEdges:[upperEdge,lowerEdge]};
+ });
+ const axisLeft=trace(x0,0),axisRight=trace(x1,0),axisWidth=axisRight[0]-axisLeft[0],upperBase=points[2][0]-points[3][0],lowerBase=points[1][0]-points[0][0],height=zTop-zBottom;
  const excess=zTop-front[2];
  const unreachableHeight=excess>1e-7?excess:0;
  return {optical,axisWidth,axisLeft,axisRight,points,worldPoints:points.map(p=>[0,p[0],p[1]]),camera:[B,0,H],front,laserFront:[0,0,front[2]],laserReachesTop:unreachableHeight===0,unreachableHeight,axis:[-sn,0,-cs],axisHit:[0,0,0],baseline:B,frontBaseline:front[0],axisDistance:U,frontDistance:c.wd,normalHeight:H,theta:s.theta,upperBase,lowerBase,height,upperHeight:Math.max(0,upper),lowerHeight:Math.max(0,lower),zTop,zBottom,roi:{...r,rx:Math.floor((r.nx-r.rw)/2),ry:Math.floor((r.ny-r.rh)/2)},rectangle:Math.abs(upperBase-lowerBase)<1e-7*Math.max(1,upperBase,lowerBase),sensor:{heightSensorAxis,lineSensorAxis,sensorHeight,sensorWidth,nHeight,nLine,roiHeight,roiLine,startHeight,startLine,heightMode:mode},sampling:{unit:'mm/pixel',samples}};

@@ -228,8 +228,6 @@ body:has(.fov-toolbar #toast:not(:empty)) #lineMain .content > #lineStatus:not(.
   #structuredMain, #lineMain { padding: 10px; }
   .fov-toolbar .actions { justify-content: flex-start; }
   .fov-toolbar #toast { inset-block-start: calc(100% + 8px); max-width: 46vw; inset-inline-end: 13px; }
-  body:has(.fov-toolbar #toast:not(:empty)) #structuredMain .content > #modelInfo,
-  body:has(.fov-toolbar #toast:not(:empty)) #lineMain .content > #lineStatus:not(.bad) { padding-inline-end: 48vw; }
   :is(#structuredMain, #lineMain) > .parameter-grid { border: 1px solid var(--workbench-divider); border-radius: var(--workbench-panel-radius); }
 }
 @media (max-width: 500px) {
@@ -415,4 +413,32 @@ body:has(.fov-toolbar #toast:not(:empty)) #lineMain .content > #lineStatus:not(.
 }
 @media (min-width: 761px) and (max-width: 900px) {
   .overview-plot-tools .tabs button, .overview-plot-tools > button { padding-inline: 3px; }
+}
+
+.workspace-jumps { display: none; }
+@media screen and (max-width: 760px) {
+  .workspace-jumps {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    order: -1;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-block: -6px -3px;
+    padding: 3px 0;
+    background: var(--workbench-bg);
+  }
+  .workspace-jumps a {
+    padding: 5px 12px;
+    border: 1px solid var(--workbench-divider);
+    border-radius: var(--workbench-control-radius);
+    background: var(--workbench-surface);
+    color: var(--workbench-accent);
+    font-size: 13px;
+    line-height: 18px;
+    text-decoration: none;
+  }
+  .workspace-jumps a:focus-visible { outline: 2px solid var(--workbench-accent); }
+  :is(#structuredMain,#lineMain) > .parameter-grid { scroll-margin-top: 40px; }
 }

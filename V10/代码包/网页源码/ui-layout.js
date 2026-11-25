@@ -47,6 +47,28 @@ for(const [id,title,caption] of [['lineLayoutInfo','安装关系','X–Z 侧视�
  panel.querySelector('[data-line-zoom]').addEventListener('click',()=>{if(panel.closest('#lineDialog')){laserMeasureSlot=document.createComment('line-measure-position');group.before(laserMeasureSlot);laserMeasureGroup=group;panel.append(group);}});
 }
 laserPlots.after(laserMeasures);document.getElementById('lineDialog').addEventListener('close',()=>{if(laserMeasureSlot){laserMeasureSlot.replaceWith(laserMeasureGroup);laserMeasureSlot=laserMeasureGroup=null;}});
+// At phone widths the two work areas share a single scroll surface.
+for(const workspace of [main,laserMain]){
+ const nav=document.createElement('nav');
+ nav.className='workspace-jumps';
+ nav.setAttribute('aria-label','工作区导航');
+ for(const [selector,suffix,label] of [['.content','Results','视图'],['.parameter-grid','Parameters','参数']]){
+  const target=workspace.querySelector(selector);
+  target.id=target.id||workspace.id+suffix;
+  target.tabIndex=-1;
+  const link=document.createElement('a');
+  link.href='#'+target.id;
+  link.textContent=label;
+  link.addEventListener('click',event=>{
+   event.preventDefault();
+   target.focus({preventScroll:true});
+   if(suffix==='Results')window.scrollTo(0,0);
+   else target.scrollIntoView({block:'start'});
+  });
+  nav.append(link);
+ }
+ workspace.prepend(nav);
+}
 for(const status of [document.getElementById('modelInfo'),document.getElementById('lineStatus')]){const title=()=>status.title=status.textContent;title();new MutationObserver(title).observe(status,{childList:true,subtree:true,characterData:true});}
 
 // Reuse the existing controls so their shortcuts, file handlers and export settings stay bound.
@@ -132,6 +154,9 @@ const style=document.createElement('style');style.id='overview-first-style';styl
 @media(max-width:1100px){#lineMain .laser-info{min-height:0}}
 @media(max-width:760px){#structuredMain,#lineMain{--overview-plot-height:300px}#lineMain .laser-plots{grid-template-columns:1fr}.line-measure-columns{grid-template-columns:1fr}.line-measure-columns{gap:0}}
 @media print{#structuredMain .plots .plot,#structuredMain .plots .layout-panel>#layout,#lineMain .line-plot{height:300px;min-height:0}.line-overview-measures{break-inside:avoid}}
+@media screen and (min-width:761px){
+ #structuredMain .plots,#lineMain .laser-plots{grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr))}
+}
 
 `;document.head.append(style);
 // Reserve the larger toolbar height using their actual shared width, independent of the active product.

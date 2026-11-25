@@ -4,11 +4,11 @@ const controls=document.createElement('div');controls.className='v10-history';co
 const snapshots=[clone(state)];let historyIndex=0,historyGroup=null,replaying=false;
 const signature=()=>JSON.stringify(state);
 const isWorkDistanceField=el=>['nearWD','otherWD','farWD'].includes(el?.id);
-function historyButtons(){const dirty=Boolean(endpointDraft)||signature()!==JSON.stringify(snapshots[historyIndex]);$('undoParameters').disabled=!dirty&&historyIndex===0;$('redoParameters').disabled=dirty||historyIndex>=snapshots.length-1;}
+function historyButtons(){const dirty=Boolean(endpointDraft||nominalDraft)||signature()!==JSON.stringify(snapshots[historyIndex]);$('undoParameters').disabled=!dirty&&historyIndex===0;$('redoParameters').disabled=dirty||historyIndex>=snapshots.length-1;}
 const forwardUpdate=update;
 update=function(){forwardUpdate();if(!replaying&&result){const next=clone(state);if(JSON.stringify(next)!==JSON.stringify(snapshots[historyIndex])){const el=document.activeElement,group=el?.dataset.path||(isWorkDistanceField(el)?el.id:null);snapshots.splice(historyIndex+1);if(group&&group===historyGroup&&historyIndex>0)snapshots[historyIndex]=next;else{snapshots.push(next);historyIndex++;if(snapshots.length>101){snapshots.shift();historyIndex--;}}historyGroup=group;}}historyButtons();};
 function restoreHistory(next){replaying=true;historyGroup=null;state=clone(next);sync();update();replaying=false;historyButtons();}
-$('undoParameters').onclick=()=>{if(endpointDraft||signature()!==JSON.stringify(snapshots[historyIndex]))restoreHistory(snapshots[historyIndex]);else if(historyIndex>0)restoreHistory(snapshots[--historyIndex]);toast('已撤销参数修改');};
+$('undoParameters').onclick=()=>{if(endpointDraft||nominalDraft||signature()!==JSON.stringify(snapshots[historyIndex]))restoreHistory(snapshots[historyIndex]);else if(historyIndex>0)restoreHistory(snapshots[--historyIndex]);toast('已撤销参数修改');};
 $('redoParameters').onclick=()=>{if(historyIndex<snapshots.length-1)restoreHistory(snapshots[++historyIndex]);toast('已重做参数修改');};
 document.addEventListener('focusout',()=>historyGroup=null);
 document.addEventListener('keydown',e=>{if(!(e.ctrlKey||e.metaKey)||e.altKey)return;const el=e.target;if(el.matches('input,textarea')&&!el.dataset.path&&!isWorkDistanceField(el))return;const k=e.key.toLowerCase();if(k==='z'||k==='y'){e.preventDefault();if(k==='y'||e.shiftKey){if(!$('redoParameters').disabled)$('redoParameters').click();}else if(!$('undoParameters').disabled)$('undoParameters').click();}});

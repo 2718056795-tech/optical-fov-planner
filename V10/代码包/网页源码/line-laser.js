@@ -20,11 +20,28 @@ const main=document.createElement('main');main.id='lineMain';main.className='lin
 function heightAxisOf(s){const short=s.camera.w<s.camera.h?'X':'Y';return s.heightAxis==='long'?(short==='X'?'Y':'X'):short;}
 function heightROIOf(s){return s.roi[heightAxisOf(s)==='X'?'rw':'rh'];}
 function heightPixelsOf(s){return s.roi[heightAxisOf(s)==='X'?'nx':'ny'];}
-function normalizeROI(before=null,path=''){
- const axis=heightAxisOf(ls),r=ls.roi,roiKey=axis==='X'?'rw':'rh',fullKey=axis==='X'?'nx':'ny';
- if(before&&heightAxisOf(before)!==axis){const old=heightROIOf(before),wasFull=old===heightPixelsOf(before);r[roiKey]=wasFull?r[fullKey]:Math.min(old,r[fullKey]);}
- if(before&&path==='roi.'+fullKey&&heightROIOf(before)===heightPixelsOf(before))r[roiKey]=r[fullKey];
- r[axis==='X'?'rh':'rw']=r[axis==='X'?'ny':'nx'];
+const linkedFields=new Set(['camera.pixelPitch','camera.w','camera.h','roi.nx','roi.ny']);
+let sensorEdit=null;
+function validSensor(){
+ const c=ls.camera,r=ls.roi;
+ return [c.pixelPitch,c.w,c.h].every(v=>Number.isFinite(v)&&v>0)&&[r.nx,r.ny].every(v=>Number.isInteger(v)&&v>0);
+}
+function normalizeROI(intent){
+ if(!validSensor())return;
+ const r=ls.roi,verticalX=heightAxisOf(ls)==='X',pixels=heightPixelsOf(ls);
+ if(intent)r[verticalX?'rw':'rh']=intent.full?pixels:Math.min(intent.count,pixels);
+ r[verticalX?'rh':'rw']=verticalX?r.ny:r.nx;
+}
+function syncSensorSummary(){
+ const choose=main.querySelector('[data-line="heightAxis"]'),input=main.querySelector('[data-line="heightROI"]');
+ const valid=validSensor(),shortAxis=ls.camera.w<ls.camera.h?'X':'Y',longAxis=shortAxis==='X'?'Y':'X',axis=heightAxisOf(ls);
+ const axisText=a=>' · Sensor '+a+'（'+N(a==='X'?ls.camera.w:ls.camera.h,4)+' mm）';
+ choose.options[0].textContent='短边'+(valid?axisText(shortAxis):'');
+ choose.options[1].textContent='长边'+(valid?axisText(longAxis):'');
+ el('lineROILabel').textContent='测高 ROI'+(valid?' · Sensor '+axis:'')+' (px)';
+ if(valid)input.max=heightPixelsOf(ls);else input.removeAttribute('max');
+ el('lineSensorInfo').textContent=valid?N(ls.camera.pixelPitch,4)+' μm × '+ls.roi.nx+' / '+ls.roi.ny+' px = '+N(ls.camera.w,4)+' × '+N(ls.camera.h,4)+' mm':'';
+ el('lineOrientationInfo').textContent=valid?'当前测高：Sensor '+axis+'；沿线：Sensor '+(axis==='X'?'Y':'X')+'。ROI 沿测高方向自动居中，沿线方向保持全幅。':'';
 }
 const esc=s=>escapeText(String(s)),N=(v,n=2)=>fmt(v,n),getValue=(p,mount)=>p==='baseline'?mount.baseline:p==='normalH'?mount.normalHeight:p==='heightROI'?heightROIOf(ls):p.split('.').reduce((v,k)=>v[k],ls);
 function put(p,v){if(p==='heightROI'){ls.roi[heightAxisOf(ls)==='X'?'rw':'rh']=v;return;}const a=p.split('.'),k=a.pop();let obj=ls;for(const s of a)obj=obj[s];obj[k]=v;}
@@ -38,26 +55,35 @@ function syncInputs(force=false){
   else e.value=Number.isFinite(v)?e.readOnly?Number(v.toFixed(2)):Number(v.toPrecision(9)):'';
  }
 }
-function linkSensor(path,before){const c=ls.camera,r=ls.roi;if(path==='roi.nx'){if(before.roi.rw===before.roi.nx)r.rw=r.nx;else r.rw=Math.min(r.rw,r.nx);}if(path==='roi.ny'){if(before.roi.rh===before.roi.ny)r.rh=r.ny;else r.rh=Math.min(r.rh,r.ny);}if(path==='camera.w')c.pixelPitch=c.w*1000/r.nx;if(path==='camera.h')c.pixelPitch=c.h*1000/r.ny;c.w=r.nx*c.pixelPitch/1000;c.h=r.ny*c.pixelPitch/1000;}
-function buttons(){el('lineUndo').disabled=index<=0&&!!lr;el('lineRedo').disabled=!lr||index>=history.length-1;for(const e of [el('lineSave'),el('lineCSV'),el('lineExportAll'),...main.querySelectorAll('[data-line-export]')])e.disabled=!lr;}
+function linkSensor(path){const c=ls.camera,r=ls.roi;if(path==='camera.w')c.pixelPitch=c.w*1000/r.nx;if(path==='camera.h')c.pixelPitch=c.h*1000/r.ny;c.w=r.nx*c.pixelPitch/1000;c.h=r.ny*c.pixelPitch/1000;}
+function buttons(){el('lineUndo').disabled=index<=0&&!!lr;el('lineRedo').disabled=!lr||index>=history.length-1;for(const e of [el('lineSave'),el('lineCSV'),el('lineExportAll'),...document.querySelectorAll('[data-line-export],[data-line-zoom]')])e.disabled=!lr;}
 function record(){if(replay||!lr)return;const next=JSON.stringify(ls);if(next===JSON.stringify(history[index]))return;const active=document.activeElement?.dataset.line;history.splice(index+1);if(active&&group===active&&index>0)history[index]=cp(ls);else{history.push(cp(ls));index++;if(history.length>101){history.shift();index--;}}group=active||null;}
 function sampleRange(s){return s.axisCentered?'光轴中心 ±0.5像素'+(s.withinROI?'':'（取样部分超出 ROI）'):'第 '+s.row+' 个像素';}
+function sampleStatus(s){
+ const notes=[];
+ if(s.illumination==='outside')notes.push('超出照射范围');
+ if(s.illumination==='partial')notes.push('部分可照射');
+ if(!s.withinROI)notes.push('取样跨出 ROI，仅供参考');
+ return notes.join(' · ');
+}
 function valueCell(label,value,unit='mm'){return '<div><span>'+label+'</span><strong>'+N(value)+' <small>'+unit+'</small></strong></div>';}
 function illuminationWarning(r){
  const height=r.unreachableHeight<.01?'小于 0.01':N(r.unreachableHeight);
  return '视野上缘超出激光前端 '+height+' mm，前端以上不可照射。';
 }
 function updateLine(saveHistory=true){
- normalizeROI();const roiInput=main.querySelector('[data-line="heightROI"]');roiInput.max=heightPixelsOf(ls);el('lineROILabel').textContent='测高 ROI · Sensor '+heightAxisOf(ls)+' (px)';
+ normalizeROI();syncSensorSummary();
  el('lineMountFormula').textContent='θ 从竖直方向量起。基线 B = '+(G.originOffset(ls)===0?'WD':'(WD + 光心后移量)')+' × sin θ';
  const reference=ls.camera.model==='magnification';el('lineFocalField').hidden=el('lineOffsetField').hidden=reference;el('lineMagField').hidden=el('lineMagWDField').hidden=!reference;el('lineModelInfo').textContent=reference?'输入普通正视倍率建立视锥，测高方向另计倾斜投影；不使用名义焦距和光心后移，离开参考 WD 按中心投影估算。':ls.camera.model==='thin'?'薄透镜物距按前端 WD 加光心后移估算，需大于焦距；光心后移正值在后方。':'针孔近似按焦距与视距估算；光心后移以镜头前端为基准，正值在后方。';
  try{lr=G.solve(ls);ls.baseline=lr.baseline;el('lineError').hidden=true;el('lineStatus').classList.toggle('bad',!lr.laserReachesTop);el('lineStatus').textContent=lr.laserReachesTop?'线激光 · 激光器与镜头前端同高；光轴交点为零高，当前视野为'+(lr.rectangle?'矩形':'梯形')+'。':illuminationWarning(lr);
  el('lineDimensions').innerHTML='<div class="line-dimension-grid">'+valueCell('上底',lr.upperBase)+valueCell('下底',lr.lowerBase)+valueCell('总高',lr.height)+valueCell('上高 · 光轴至上底',lr.upperHeight)+valueCell('下高 · 光轴至下底',lr.lowerHeight)+valueCell('光轴处横向视野',lr.axisWidth)+'</div><p class="small">尺寸在激光光平面 Y–Z 内测量；上底对应较高位置。</p>';
  el('lineLayoutInfo').innerHTML='<div class="line-install-grid">'+valueCell('前端至光平面 · 沿光轴',lr.frontDistance)+valueCell('X 光心基线',lr.baseline)+valueCell('相机倾角 θ',lr.theta,'°')+valueCell('激光 / 镜头前端共同高度',lr.front[2])+'</div><p class="small">X–Z 侧视。蓝色实线为视野边界，蓝色虚线为相机光轴。θ 从向下的平面法线量起，WD 从镜头前端沿光轴量至零高交点。</p>';
- el('lineSampling').innerHTML=lr.sampling.samples.map(s=>'<article class="line-sample" title="测高方向 Sensor '+lr.sensor.heightSensorAxis+' '+sampleRange(s)+'；Sensor 上点='+N(s.sensorEdges[0]*1000,6)+' μm；下点='+N(s.sensorEdges[1]*1000,6)+' μm；上边缘 Z='+N(s.heightEdges[0][1],9)+' mm；下边缘 Z='+N(s.heightEdges[1][1],9)+' mm；差值='+N(s.heightPitch,9)+' mm"><h3>'+s.label+'</h3><div><strong>'+N(s.heightPitch,6)+'</strong></div></article>').join('');
- const shortAxis=ls.camera.w<ls.camera.h?'X':'Y',longAxis=shortAxis==='X'?'Y':'X',axisSize=a=>a==='X'?ls.camera.w:ls.camera.h,choose=main.querySelector('[data-line="heightAxis"]');choose.options[0].textContent='短边 · Sensor '+shortAxis+'（'+N(axisSize(shortAxis),4)+' mm）';choose.options[1].textContent='长边 · Sensor '+longAxis+'（'+N(axisSize(longAxis),4)+' mm）';el('lineOrientationInfo').textContent='当前测高：Sensor '+lr.sensor.heightSensorAxis+'；沿线：Sensor '+lr.sensor.lineSensorAxis+'。ROI 沿测高方向自动居中，沿线方向保持全幅。';
- el('lineSensorInfo').textContent=N(ls.camera.pixelPitch,4)+' μm × '+ls.roi.nx+' / '+ls.roi.ny+' px = '+N(ls.camera.w,4)+' × '+N(ls.camera.h,4)+' mm';try{localStorage.setItem(key,JSON.stringify(ls));}catch(e){}if(saveHistory)record();
- }catch(e){lr=null;el('lineError').hidden=false;el('lineError').textContent=e.message;el('lineStatus').classList.add('bad');el('lineStatus').textContent='线激光参数未形成有效视野，请修改参数。';el('lineDimensions').innerHTML=el('lineLayoutInfo').innerHTML=el('lineSampling').innerHTML='';el('lineOrientationInfo').textContent='';}
+ el('lineSampling').innerHTML=lr.sampling.samples.map(s=>{
+  const summary=sampleStatus(s),detail='测高方向 Sensor '+lr.sensor.heightSensorAxis+' '+sampleRange(s)+'；Sensor 上点='+N(s.sensorEdges[0]*1000,6)+' μm；下点='+N(s.sensorEdges[1]*1000,6)+' μm；上边缘 Z='+N(s.heightEdges[0][1],9)+' mm；下边缘 Z='+N(s.heightEdges[1][1],9)+' mm；差值='+N(s.heightPitch,9)+' mm';
+  return '<article class="line-sample" title="'+esc(detail)+'"><h3>'+s.label+'</h3><div><strong>'+N(s.heightPitch,6)+'</strong>'+(summary?'<span style="color:#935000">'+summary+'</span>':'')+'</div></article>';
+ }).join('');
+ try{localStorage.setItem(key,JSON.stringify(ls));}catch(e){}if(saveHistory)record();
+ }catch(e){lr=null;el('lineError').hidden=false;el('lineError').textContent=e.message;el('lineStatus').classList.add('bad');el('lineStatus').textContent='线激光参数未形成有效视野，请修改参数。';el('lineDimensions').innerHTML=el('lineLayoutInfo').innerHTML=el('lineSampling').innerHTML='';}
  syncInputs();buttons();drawLine();
 }
 function ln(a,b,c='#b7c3d0',dash='',width=1){return '<line x1="'+a[0]+'" y1="'+a[1]+'" x2="'+b[0]+'" y2="'+b[1]+'" stroke="'+c+'" stroke-width="'+width+'"'+(dash?' stroke-dasharray="'+dash+'"':'')+'/>';}
@@ -253,20 +279,37 @@ function drawTrap(){
  out+=tx([14,20],'Y：沿线 · Z：高度','#8e8e93',10,'start');a.s.innerHTML=out;
 }
 function drawLine(){if(product!=='lineLaser')return;drawSide();drawTrap();}
-main.querySelectorAll('[data-line]').forEach(e=>{if(e.readOnly)return;e.addEventListener('input',()=>{const path=e.dataset.line,v=e.tagName==='SELECT'?e.value:e.value===''?NaN:Number(e.value),before=cp(ls);put(path,v);if(['camera.pixelPitch','camera.w','camera.h','roi.nx','roi.ny'].includes(path))linkSensor(path,before);normalizeROI(before,path);updateLine();});});
-main.addEventListener('focusout',()=>group=null);
-function restore(n){replay=true;ls=cp(n);group=null;updateLine(false);syncInputs(true);replay=false;}
+main.querySelectorAll('[data-line]').forEach(e=>{
+ if(e.readOnly)return;
+ e.addEventListener('input',()=>{
+  const path=e.dataset.line,linked=linkedFields.has(path),adjustROI=linked||path==='heightAxis';
+  // Short/long axes and the size limit may cross several times as a number is typed.
+  // Keep the user's original window for the duration of this edit.
+  if(adjustROI&&(!sensorEdit||(sensorEdit.path!==path&&validSensor()))){
+   const count=heightROIOf(ls);
+   sensorEdit={path,count,full:count===heightPixelsOf(ls)};
+  }
+  const value=e.tagName==='SELECT'?e.value:e.value===''?NaN:Number(e.value);
+  put(path,value);
+  if(linked)linkSensor(path);
+  if(adjustROI)normalizeROI(sensorEdit);
+  if(path==='heightROI')sensorEdit=null;
+  updateLine();
+ });
+});
+main.addEventListener('focusout',()=>{group=null;if(validSensor())sensorEdit=null;});
+function restore(n){replay=true;ls=cp(n);group=null;sensorEdit=null;updateLine(false);syncInputs(true);replay=false;}
 el('lineUndo').onclick=()=>{if(!lr)restore(history[index]);else if(index>0)restore(history[--index]);buttons();toast('已撤销线激光参数修改');};el('lineRedo').onclick=()=>{if(index<history.length-1)restore(history[++index]);buttons();toast('已重做线激光参数修改');};
 document.addEventListener('keydown',e=>{if(product!=='lineLaser'||!(e.ctrlKey||e.metaKey)||e.altKey)return;const k=e.key.toLowerCase();if(k==='z'||k==='y'){e.preventDefault();e.stopImmediatePropagation();const id=k==='y'||e.shiftKey?'lineRedo':'lineUndo';if(!el(id).disabled)el(id).click();}},true);
-el('lineReset').onclick=()=>{ls=cp(G.defaults);group=null;updateLine();syncInputs(true);toast('已恢复线激光示例');};el('lineFullROI').onclick=()=>{ls.roi.rw=ls.roi.nx;ls.roi.rh=ls.roi.ny;group=null;updateLine();};
-el('lineSave').onclick=()=>{if(lr)download('线激光视野方案-V10.json',JSON.stringify(ls,null,2),'application/json');};el('lineLoad').onchange=async e=>{const file=e.target.files[0];if(!file)return;try{if(file.size>200000)throw Error('方案文件过大');ls=G.load(JSON.parse(await file.text()));group=null;updateLine();syncInputs(true);toast('已载入线激光方案 '+file.name);}catch(err){toast('载入失败：'+err.message);}e.target.value='';};
-el('lineCSV').onclick=()=>{if(!lr)return;const r=lr,rows=[['产品线','线激光 / 沙姆镜头'],['参数','值','单位'],['镜头模型',ls.camera.model||'pinhole'],['名义焦距',ls.camera.f,'mm'],['当前有效投影尺度',r.optical.effectiveF,'mm'],['前端轴向 WD',ls.camera.wd,'mm'],['当前模型使用光心后移',r.optical.originOffset,'mm'],['基线',r.baseline,'mm'],['倾角（相对竖直）',ls.theta,'°'],['光心垂直高度',r.normalHeight,'mm'],['Sensor X',ls.camera.w,'mm'],['Sensor Y',ls.camera.h,'mm'],['ROI',heightROIOf(ls),'px'],['ROI 方向','Sensor '+r.sensor.heightSensorAxis,'测高方向居中'],['上底',r.upperBase,'mm'],['下底',r.lowerBase,'mm'],['总高',r.height,'mm'],['光轴处横向视野',r.axisWidth,'mm'],['上高（光轴至上底）',r.upperHeight,'mm'],['下高（光轴至下底）',r.lowerHeight,'mm'],[],['顶点','Y 沿线 mm','Z 高度 mm']];r.points.forEach((p,i)=>rows.push([i+1,...p]));if(ls.camera.model==='magnification')rows.push(['参考正视倍率',ls.camera.mag],['倍率参考轴向WD',ls.camera.magWD,'mm']);rows.push([],['测高使用',ls.heightAxis==='long'?'Sensor 长边':'Sensor 短边'],['测高 Sensor 轴',r.sensor.heightSensorAxis],['沿线 Sensor 轴',r.sensor.lineSensorAxis],['激光前端高度',r.laserFront[2]],['镜头前端高度',r.front[2]],['前端以上不可照射高度',r.unreachableHeight,'mm'],['竖直下射范围',r.laserReachesTop?'视野位于激光前端及以下':illuminationWarning(r)],[],['位置','测高 mm/像素','测高 Sensor 轴','取样区间','物方上交点 Z mm','物方下交点 Z mm','Sensor 上点 μm','Sensor 下点 μm']);for(const s of r.sampling.samples)rows.push([s.label,s.heightPitch,r.sensor.heightSensorAxis,sampleRange(s),s.heightEdges[0][1],s.heightEdges[1][1],s.sensorEdges[0]*1000,s.sensorEdges[1]*1000]);csvDownload('线激光梯形视野-V10.csv',rows);};
-function lineExport(kind){const id=kind==='layout'?'lineLayout':'lineFootprint',svg=el(id),W=svg.clientWidth,H=svg.clientHeight,title=kind==='layout'?'线激光器与镜头交汇图':'线激光光平面内梯形视野';let content='<g>'+svg.innerHTML+'</g>',y=H+23;const rows=kind==='layout'?[]:['上底 '+N(lr.upperBase)+' mm · 下底 '+N(lr.lowerBase)+' mm · 总高 '+N(lr.height)+' mm','上高 '+N(lr.upperHeight)+' mm · 下高 '+N(lr.lowerHeight)+' mm','光轴处横向视野 '+N(lr.axisWidth)+' mm','测高方向像素间距（mm/像素）',...lr.sampling.samples.map(s=>s.label+'：'+N(s.heightPitch,6))];
+el('lineReset').onclick=()=>{ls=cp(G.defaults);group=null;sensorEdit=null;updateLine();syncInputs(true);toast('已恢复线激光示例');};el('lineFullROI').onclick=()=>{sensorEdit=null;ls.roi.rw=ls.roi.nx;ls.roi.rh=ls.roi.ny;group=null;updateLine();};
+el('lineSave').onclick=()=>{if(lr)download('线激光视野方案-V10.json',JSON.stringify(ls,null,2),'application/json');};el('lineLoad').onchange=async e=>{const file=e.target.files[0];if(!file)return;try{if(file.size>200000)throw Error('方案文件过大');ls=G.load(JSON.parse(await file.text()));group=null;sensorEdit=null;updateLine();syncInputs(true);toast('已载入线激光方案 '+file.name);}catch(err){toast('载入失败：'+err.message);}e.target.value='';};
+el('lineCSV').onclick=()=>{if(!lr)return;const r=lr,rows=[['产品线','线激光 / 沙姆镜头'],['参数','值','单位'],['镜头模型',ls.camera.model||'pinhole'],['名义焦距',ls.camera.f,'mm'],['当前有效投影尺度',r.optical.effectiveF,'mm'],['前端轴向 WD',ls.camera.wd,'mm'],['当前模型使用光心后移',r.optical.originOffset,'mm'],['基线',r.baseline,'mm'],['倾角（相对竖直）',ls.theta,'°'],['光心垂直高度',r.normalHeight,'mm'],['Sensor X',ls.camera.w,'mm'],['Sensor Y',ls.camera.h,'mm'],['ROI',heightROIOf(ls),'px'],['ROI 方向','Sensor '+r.sensor.heightSensorAxis,'测高方向居中'],['上底',r.upperBase,'mm'],['下底',r.lowerBase,'mm'],['总高',r.height,'mm'],['光轴处横向视野',r.axisWidth,'mm'],['上高（光轴至上底）',r.upperHeight,'mm'],['下高（光轴至下底）',r.lowerHeight,'mm'],[],['顶点','Y 沿线 mm','Z 高度 mm']];r.points.forEach((p,i)=>rows.push([i+1,...p]));if(ls.camera.model==='magnification')rows.push(['参考正视倍率',ls.camera.mag],['倍率参考轴向WD',ls.camera.magWD,'mm']);rows.push([],['测高使用',ls.heightAxis==='long'?'Sensor 长边':'Sensor 短边'],['测高 Sensor 轴',r.sensor.heightSensorAxis],['沿线 Sensor 轴',r.sensor.lineSensorAxis],['激光前端高度',r.laserFront[2]],['镜头前端高度',r.front[2]],['前端以上不可照射高度',r.unreachableHeight,'mm'],['竖直下射范围',r.laserReachesTop?'视野位于激光前端及以下':illuminationWarning(r)],[],['位置','测高 mm/像素','测高 Sensor 轴','取样区间','物方上交点 Z mm','物方下交点 Z mm','Sensor 上点 μm','Sensor 下点 μm','取样适用状态']);for(const s of r.sampling.samples)rows.push([s.label,s.heightPitch,r.sensor.heightSensorAxis,sampleRange(s),s.heightEdges[0][1],s.heightEdges[1][1],s.sensorEdges[0]*1000,s.sensorEdges[1]*1000,sampleStatus(s)||'取样在 ROI 和激光前端照射范围内']);csvDownload('线激光梯形视野-V10.csv',rows);};
+function lineExport(kind){const id=kind==='layout'?'lineLayout':'lineFootprint',svg=el(id),W=svg.clientWidth,H=svg.clientHeight,title=kind==='layout'?'线激光器与镜头交汇图':'线激光光平面内梯形视野';let content='<g>'+svg.innerHTML+'</g>',y=H+23;const rows=kind==='layout'?[]:['上底 '+N(lr.upperBase)+' mm · 下底 '+N(lr.lowerBase)+' mm · 总高 '+N(lr.height)+' mm','上高 '+N(lr.upperHeight)+' mm · 下高 '+N(lr.lowerHeight)+' mm','光轴处横向视野 '+N(lr.axisWidth)+' mm','测高方向像素间距（mm/像素）',...lr.sampling.samples.map(s=>[s.label+'：'+N(s.heightPitch,6),sampleStatus(s)].filter(Boolean).join(' · '))];
  if(!lr.laserReachesTop)rows.push(illuminationWarning(lr));
  for(const row of wrapPlotRows(rows,W-30,11)){content+=exportText(15,y,row,11);y+=19;}return{title,W,H:rows.length?y+9:H,content};}
 async function exportLine(kind){if(!lr)return;const old=el('imageFormat').value;el('imageFormat').value=el('lineFormat').value;try{if(kind==='all'){const plots=[lineExport('layout'),lineExport('footprint')],W=Math.max(...plots.map(p=>p.W));let y=0,content='';for(const p of plots){content+=exportText(15,y+20,p.title,13,'#253a50',650)+'<g transform="translate(0,'+(y+30)+')">'+p.content+'</g>';y+=p.H+45;}await downloadPlotImage('线激光光路与梯形视野-V10',W,y,content);}else{const q=lineExport(kind);await downloadPlotImage(q.title+'-V10',q.W,q.H,q.content);}}finally{el('imageFormat').value=old;}}
 main.querySelectorAll('[data-line-export]').forEach(e=>e.onclick=()=>exportLine(e.dataset.lineExport));el('lineExportAll').onclick=()=>exportLine('all');
-const dialog=document.createElement('dialog');dialog.id='lineDialog';dialog.className='line-dialog';dialog.innerHTML='<div class="plot-dialog-head"><strong id="lineDialogTitle"></strong><button id="lineCloseDialog">恢复视图 · Esc</button></div><div id="lineDialogBody"></div>';document.body.append(dialog);let zoomed=null,slot=null,trigger=null;main.querySelectorAll('[data-line-zoom]').forEach(e=>e.onclick=()=>{if(zoomed)return;trigger=e;zoomed=e.closest('.laser-panel');slot=document.createComment('line-panel-position');zoomed.before(slot);el('lineDialogTitle').textContent=zoomed.querySelector('h2').textContent;el('lineDialogBody').append(zoomed);zoomed.classList.add('line-expanded');e.hidden=true;dialog.showModal();requestAnimationFrame(drawLine);});el('lineCloseDialog').onclick=()=>dialog.close();dialog.addEventListener('close',()=>{if(!zoomed)return;slot.replaceWith(zoomed);zoomed.classList.remove('line-expanded');trigger.hidden=false;const focus=trigger;zoomed=slot=trigger=null;requestAnimationFrame(drawLine);focus.focus({preventScroll:true});});
+const dialog=document.createElement('dialog');dialog.id='lineDialog';dialog.className='line-dialog';dialog.innerHTML='<div class="plot-dialog-head"><strong id="lineDialogTitle"></strong><button id="lineCloseDialog">恢复视图 · Esc</button></div><div id="lineDialogBody"></div>';document.body.append(dialog);let zoomed=null,slot=null,trigger=null;main.querySelectorAll('[data-line-zoom]').forEach(e=>e.onclick=()=>{if(!lr||zoomed)return;trigger=e;zoomed=e.closest('.laser-panel');slot=document.createComment('line-panel-position');zoomed.before(slot);el('lineDialogTitle').textContent=zoomed.querySelector('h2').textContent;el('lineDialogBody').append(zoomed);zoomed.classList.add('line-expanded');e.hidden=true;dialog.showModal();requestAnimationFrame(drawLine);});el('lineCloseDialog').onclick=()=>dialog.close();dialog.addEventListener('close',()=>{if(!zoomed)return;slot.replaceWith(zoomed);zoomed.classList.remove('line-expanded');trigger.hidden=false;const focus=trigger;zoomed=slot=trigger=null;requestAnimationFrame(drawLine);focus.focus({preventScroll:true});});
 let productToastTimer=null;function selectProduct(next,announce=true){if(!['structuredLight','lineLaser'].includes(next))return;product=next;document.body.classList.toggle('line-mode',next==='lineLaser');el('structuredMain').hidden=next==='lineLaser';main.hidden=next!=='lineLaser';action.hidden=next!=='lineLaser';el('productStructured').setAttribute('aria-pressed',String(next==='structuredLight'));el('productLine').setAttribute('aria-pressed',String(next==='lineLaser'));document.querySelector('header h1').textContent=next==='lineLaser'?'线激光视野规划 · V10':'3D 视觉视野规划 · V10';document.querySelector('header p').textContent=next==='lineLaser'?'线激光 × 沙姆镜头 → 激光光平面内的梯形视野':'光机投影 × 相机拍摄 → 工作平面上的共同视野';if(announce){const message=next==='lineLaser'?'已切换线激光产品线':'已切换面阵结构光产品线';toast(message);clearTimeout(productToastTimer);productToastTimer=setTimeout(()=>{if(el('toast').textContent===message)toast('');},2400);}try{localStorage.setItem('structured-light-fov-v10-product',next);}catch(e){}requestAnimationFrame(()=>{if(next==='lineLaser')updateLine(false);else update();});}
 el('productStructured').onclick=()=>selectProduct('structuredLight');el('productLine').onclick=()=>selectProduct('lineLaser');normalizeROI();history=[cp(ls)];updateLine(false);let last='structuredLight';try{last=localStorage.getItem('structured-light-fov-v10-product')||last;}catch(e){}selectProduct(last,false);
 let lastSize='';new ResizeObserver(()=>{if(product!=='lineLaser')return;const size=['lineLayout','lineFootprint'].map(id=>el(id).clientWidth+','+el(id).clientHeight).join(';');if(size!==lastSize){lastSize=size;drawLine();}}).observe(main.querySelector('.laser-plots'));for(const id of ['lineLayout','lineFootprint'])new ResizeObserver(drawLine).observe(el(id));window.addEventListener('resize',drawLine);
